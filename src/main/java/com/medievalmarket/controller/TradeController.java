@@ -3,6 +3,7 @@ package com.medievalmarket.controller;
 import com.medievalmarket.dto.TradeRequest;
 import com.medievalmarket.dto.TradeResponse;
 import com.medievalmarket.model.Portfolio;
+import com.medievalmarket.service.SeasonEngine;
 import com.medievalmarket.service.SessionRegistry;
 import com.medievalmarket.service.TradeService;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +16,12 @@ public class TradeController {
 
     private final SessionRegistry registry;
     private final TradeService tradeService;
+    private final SeasonEngine seasonEngine;
 
-    public TradeController(SessionRegistry registry, TradeService tradeService) {
+    public TradeController(SessionRegistry registry, TradeService tradeService, SeasonEngine seasonEngine) {
         this.registry = registry;
         this.tradeService = tradeService;
+        this.seasonEngine = seasonEngine;
     }
 
     @PostMapping("/buy")
@@ -45,9 +48,17 @@ public class TradeController {
         if (portfolio == null) {
             return ResponseEntity.status(404).body(Map.of("error", "SESSION_NOT_FOUND"));
         }
+        double realizedPnl = 0.0;
         try {
-            if (isBuy) tradeService.buy(portfolio, request.good(), request.quantity());
-            else tradeService.sell(portfolio, request.good(), request.quantity());
+            if (isBuy) {
+                tradeService.buy(portfolio, request.good(), request.quantity());
+            } else {
+                double avgCost = portfolio.getAvgCostBasis(request.good());
+                double goldBefore = portfolio.getGold();
+                tradeService.sell(portfolio, request.good(), request.quantity());
+                double proceeds = portfolio.getGold() - goldBefore;
+                realizedPnl = proceeds - (avgCost * request.quantity());
+            }
         } catch (TradeService.TradeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -57,9 +68,9 @@ public class TradeController {
             portfolio.getGold(),
             portfolio.getHoldings(),
             portfolio.getAllCostBasis(),
-            0.0,        // placeholder realizedPnl — computed properly in Task 7
+            realizedPnl,
             portfolio.getLoanAmount(),
-            "SPRING"    // placeholder season — wired in Task 7
+            seasonEngine.getCurrentSeason()
         ));
     }
 }

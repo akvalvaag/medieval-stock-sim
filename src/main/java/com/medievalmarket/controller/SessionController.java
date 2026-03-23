@@ -4,6 +4,7 @@ import com.medievalmarket.dto.SessionStartRequest;
 import com.medievalmarket.dto.SessionStartResponse;
 import com.medievalmarket.model.PlayerClass;
 import com.medievalmarket.model.Portfolio;
+import com.medievalmarket.service.SeasonEngine;
 import com.medievalmarket.service.SessionRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,8 +15,12 @@ import java.util.Map;
 public class SessionController {
 
     private final SessionRegistry registry;
+    private final SeasonEngine seasonEngine;
 
-    public SessionController(SessionRegistry registry) { this.registry = registry; }
+    public SessionController(SessionRegistry registry, SeasonEngine seasonEngine) {
+        this.registry = registry;
+        this.seasonEngine = seasonEngine;
+    }
 
     @PostMapping("/start")
     public ResponseEntity<?> start(@RequestBody SessionStartRequest request) {
@@ -40,7 +45,7 @@ public class SessionController {
         return new SessionStartResponse(
             p.getSessionId(), p.getPlayerName(), p.getPlayerClass().name(),
             p.getGold(), p.getHoldings(), p.getAllCostBasis(),
-            "SPRING", 60,   // placeholder season — wired in Task 7
+            seasonEngine.getCurrentSeason(), seasonEngine.getTicksRemaining(),
             p.getLoanAmount(), p.getLimitOrders()
         );
     }
