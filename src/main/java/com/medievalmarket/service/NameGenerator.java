@@ -2,7 +2,7 @@ package com.medievalmarket.service;
 
 import org.springframework.stereotype.Component;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 public class NameGenerator {
@@ -23,13 +23,12 @@ public class NameGenerator {
         "of Ashford", "of Greywall", "of the Valley"
     );
 
-    private final Random random = new Random();
-
     public String generate() {
-        String firstName = FIRST_NAMES.get(random.nextInt(FIRST_NAMES.size()));
-        String suffix = random.nextBoolean()
-            ? EPITHETS.get(random.nextInt(EPITHETS.size()))
-            : PLACE_SUFFIXES.get(random.nextInt(PLACE_SUFFIXES.size()));
+        ThreadLocalRandom rng = ThreadLocalRandom.current();
+        String firstName = FIRST_NAMES.get(rng.nextInt(FIRST_NAMES.size()));
+        String suffix = rng.nextBoolean()
+            ? EPITHETS.get(rng.nextInt(EPITHETS.size()))
+            : PLACE_SUFFIXES.get(rng.nextInt(PLACE_SUFFIXES.size()));
         return firstName + " " + suffix;
     }
 }

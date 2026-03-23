@@ -49,6 +49,6 @@ public class Portfolio {
         return current - (double) arr[compareIdx];
     }
 
-    public Instant getLastTradeTime() { return lastTradeTime; }
-    public void touchLastTradeTime() { this.lastTradeTime = Instant.now(); }
+    public synchronized Instant getLastTradeTime() { return lastTradeTime; }
+    public synchronized void touchLastTradeTime() { this.lastTradeTime = Instant.now(); }
 }
