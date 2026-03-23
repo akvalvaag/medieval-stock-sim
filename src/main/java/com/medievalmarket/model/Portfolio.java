@@ -12,6 +12,7 @@ public class Portfolio {
     private final PlayerClass playerClass;
     private double gold;
     private final Map<String, Integer> holdings = new HashMap<>();
+    private final Map<String, Double> avgCostBasis = new HashMap<>();
     private final Deque<Double> netWorthHistory = new ArrayDeque<>();
     private Instant lastTradeTime = Instant.now();
 
@@ -47,6 +48,27 @@ public class Portfolio {
         Object[] arr = netWorthHistory.toArray();
         int compareIdx = Math.max(0, arr.length - 6);
         return current - (double) arr[compareIdx];
+    }
+
+    public synchronized double getAvgCostBasis(String good) {
+        return avgCostBasis.getOrDefault(good, 0.0);
+    }
+
+    public synchronized Map<String, Double> getAllCostBasis() {
+        return new HashMap<>(avgCostBasis);
+    }
+
+    /** Called on buy: updates running weighted average cost per unit (before fees). */
+    public synchronized void updateCostBasis(String good, int addedQty, double pricePerUnit) {
+        int existingQty = holdings.getOrDefault(good, 0);
+        double existingAvg = avgCostBasis.getOrDefault(good, 0.0);
+        double newAvg = (existingAvg * existingQty + pricePerUnit * addedQty) / (existingQty + addedQty);
+        avgCostBasis.put(good, newAvg);
+    }
+
+    /** Called on full sell: clears cost basis for the good. */
+    public synchronized void clearCostBasis(String good) {
+        avgCostBasis.remove(good);
     }
 
     public synchronized Instant getLastTradeTime() { return lastTradeTime; }

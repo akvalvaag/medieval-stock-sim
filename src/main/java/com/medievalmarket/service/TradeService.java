@@ -23,6 +23,7 @@ public class TradeService {
 
         synchronized (portfolio) {
             if (portfolio.getGold() < cost) throw new TradeException("INSUFFICIENT_FUNDS");
+            portfolio.updateCostBasis(goodName, quantity, good.getCurrentPrice());
             portfolio.setGold(portfolio.getGold() - cost);
             portfolio.setHolding(goodName, portfolio.getHolding(goodName) + quantity);
             portfolio.touchLastTradeTime();
@@ -51,7 +52,9 @@ public class TradeService {
             }
 
             portfolio.setGold(portfolio.getGold() + saleValue);
-            portfolio.setHolding(goodName, held - quantity);
+            int remaining = held - quantity;
+            portfolio.setHolding(goodName, remaining);
+            if (remaining == 0) portfolio.clearCostBasis(goodName);
             portfolio.touchLastTradeTime();
         }
 
@@ -61,7 +64,7 @@ public class TradeService {
     }
 
     private void validateQuantity(int quantity) {
-        if (quantity < 1 || quantity > 10) throw new TradeException("INVALID_QUANTITY");
+        if (quantity < 1) throw new TradeException("INVALID_QUANTITY");
     }
 
     public static class TradeException extends RuntimeException {

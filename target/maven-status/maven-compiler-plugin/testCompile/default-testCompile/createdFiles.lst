@@ -1,0 +1,11 @@
+com\medievalmarket\service\EventEngineTest.class
+com\medievalmarket\service\NameGeneratorTest.class
+com\medievalmarket\service\PriceHistoryTest.class
+com\medievalmarket\controller\SessionControllerTest.class
+com\medievalmarket\service\ScoreboardServiceTest.class
+com\medievalmarket\controller\TradeControllerTest.class
+com\medievalmarket\service\SessionRegistryTest.class
+com\medievalmarket\service\GoodsCatalogueTest.class
+com\medievalmarket\service\PriceModelTest.class
+com\medievalmarket\service\TradeServiceTest.class
+com\medievalmarket\controller\MarketControllerTest.class

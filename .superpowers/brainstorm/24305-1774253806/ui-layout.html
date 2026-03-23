@@ -1,0 +1,75 @@
+<h2>UI Layout Options</h2>
+<p class="subtitle">How should the main trading screen be organized?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Market Table + Side Panel</h3>
+      <p>Left: scrollable goods table with price, chart sparkline, buy/sell buttons. Right: fixed portfolio panel showing gold, holdings, net worth. Event ticker at the top.</p>
+      <div class="mockup" style="margin-top:.8rem">
+        <div class="mockup-body" style="display:flex;gap:6px;font-size:.75rem">
+          <div style="flex:2;background:#2a2a3e;border-radius:6px;padding:.5rem">
+            <div style="color:#a78bfa;font-size:.65rem;margin-bottom:.4rem">MARKET — 15 GOODS</div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:3px 8px;align-items:center">
+              <span>Grain</span><span style="color:#4ade80">📈 12g</span><div style="display:flex;gap:3px"><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Buy</button><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Sell</button></div>
+              <span>Iron</span><span style="color:#f87171">📉 45g</span><div style="display:flex;gap:3px"><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Buy</button><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Sell</button></div>
+              <span>Spices</span><span style="color:#4ade80">📈 88g</span><div style="display:flex;gap:3px"><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Buy</button><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Sell</button></div>
+              <span>Wool</span><span>➡ 23g</span><div style="display:flex;gap:3px"><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Buy</button><button class="mock-button" style="padding:1px 6px;font-size:.65rem">Sell</button></div>
+            </div>
+          </div>
+          <div style="flex:1;background:#2a2a3e;border-radius:6px;padding:.5rem">
+            <div style="color:#a78bfa;font-size:.65rem;margin-bottom:.4rem">PORTFOLIO</div>
+            <div style="line-height:1.8;font-size:.72rem">
+              <div>Gold: <strong>742g</strong></div>
+              <div>Iron: 5 units</div>
+              <div>Wool: 2 units</div>
+              <div style="margin-top:.4rem;border-top:1px solid #444;padding-top:.4rem">Net worth: <strong style="color:#4ade80">987g</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Card Grid + Bottom Bar</h3>
+      <p>Goods displayed as cards in a grid, each with a mini chart, current price, and buy/sell. Portfolio summary pinned to the bottom of the screen.</p>
+      <div class="mockup" style="margin-top:.8rem">
+        <div class="mockup-body" style="font-size:.75rem">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px">
+            <div style="background:#2a2a3e;border-radius:6px;padding:.5rem;text-align:center">
+              <div style="font-size:.65rem;color:#a78bfa">GRAIN</div>
+              <div style="color:#4ade80;font-weight:bold">12g ↑</div>
+              <div style="height:20px;background:#1a1a2e;border-radius:3px;margin:3px 0"></div>
+              <div style="display:flex;gap:3px;justify-content:center"><button class="mock-button" style="padding:1px 5px;font-size:.6rem">Buy</button><button class="mock-button" style="padding:1px 5px;font-size:.6rem">Sell</button></div>
+            </div>
+            <div style="background:#2a2a3e;border-radius:6px;padding:.5rem;text-align:center">
+              <div style="font-size:.65rem;color:#a78bfa">IRON</div>
+              <div style="color:#f87171;font-weight:bold">45g ↓</div>
+              <div style="height:20px;background:#1a1a2e;border-radius:3px;margin:3px 0"></div>
+              <div style="display:flex;gap:3px;justify-content:center"><button class="mock-button" style="padding:1px 5px;font-size:.6rem">Buy</button><button class="mock-button" style="padding:1px 5px;font-size:.6rem">Sell</button></div>
+            </div>
+            <div style="background:#2a2a3e;border-radius:6px;padding:.5rem;text-align:center">
+              <div style="font-size:.65rem;color:#a78bfa">SPICES</div>
+              <div style="color:#4ade80;font-weight:bold">88g ↑</div>
+              <div style="height:20px;background:#1a1a2e;border-radius:3px;margin:3px 0"></div>
+              <div style="display:flex;gap:3px;justify-content:center"><button class="mock-button" style="padding:1px 5px;font-size:.6rem">Buy</button><button class="mock-button" style="padding:1px 5px;font-size:.6rem">Sell</button></div>
+            </div>
+          </div>
+          <div style="background:#2a2a3e;border-radius:6px;padding:.4rem;display:flex;justify-content:space-between;font-size:.7rem">
+            <span>Gold: <strong>742g</strong></span>
+            <span>Holdings: Iron×5, Wool×2</span>
+            <span>Net worth: <strong style="color:#4ade80">987g</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:1.2rem">Option A keeps everything scannable in a dense table. Option B feels more like a trading dashboard. Which suits the vibe?</p>

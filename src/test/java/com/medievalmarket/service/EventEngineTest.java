@@ -13,7 +13,8 @@ class EventEngineTest {
             .mapToObj(i -> engine.maybeFireEvent())
             .filter(e -> e == null)
             .count();
-        assertThat(nullCount).isGreaterThan(800);
+        // ~96% chance of null per tick; over 1000 ticks expect at least 900 nulls
+        assertThat(nullCount).isGreaterThan(900);
     }
 
     @Test

@@ -103,10 +103,11 @@ class TradeServiceTest {
     }
 
     @Test
-    void quantityElevenThrows() {
-        Portfolio p = noble();
-        assertThatThrownBy(() -> service.buy(p, "Iron", 11))
-            .hasMessageContaining("INVALID_QUANTITY");
+    void largeBuySucceedsWithSufficientFunds() {
+        Portfolio p = noble(); // 1000g
+        // Buy 20 Grain at ~10g each = ~206g with fee, well within 1000g
+        service.buy(p, "Grain", 20);
+        assertThat(p.getHolding("Grain")).isEqualTo(20);
     }
 
     @Test

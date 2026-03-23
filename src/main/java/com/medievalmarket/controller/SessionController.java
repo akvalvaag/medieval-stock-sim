@@ -27,14 +27,16 @@ public class SessionController {
         }
         Portfolio p = registry.createSession(playerClass);
         return ResponseEntity.ok(new SessionStartResponse(
-            p.getSessionId(), p.getPlayerName(), p.getGold(), p.getHoldings()));
+            p.getSessionId(), p.getPlayerName(), p.getPlayerClass().name(),
+            p.getGold(), p.getHoldings(), p.getAllCostBasis()));
     }
 
     @GetMapping("/{sessionId}")
     public ResponseEntity<?> resume(@PathVariable String sessionId) {
         return registry.findById(sessionId)
             .map(p -> ResponseEntity.ok(new SessionStartResponse(
-                p.getSessionId(), p.getPlayerName(), p.getGold(), p.getHoldings())))
+                p.getSessionId(), p.getPlayerName(), p.getPlayerClass().name(),
+                p.getGold(), p.getHoldings(), p.getAllCostBasis())))
             .orElse(ResponseEntity.notFound().build());
     }
 }

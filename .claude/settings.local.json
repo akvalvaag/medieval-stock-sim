@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /d/OSC/Repos/stock_sim log --oneline -5)",
+      "Bash(mvn --version)",
+      "Bash(mvn compile:*)",
+      "Bash(echo \"EXIT_CODE: $?\")",
+      "Bash(git -C /d/OSC/Repos/stock_sim add pom.xml src/main/java/com/medievalmarket/MedievalMarketApplication.java src/main/resources/application.properties)",
+      "Bash(git -C:*)",
+      "Bash(mvn test:*)",
+      "Bash(./mvnw *)",
+      "Bash(ls D:/OSC/Repos/stock_sim/*.cmd D:/OSC/Repos/stock_sim/mvnw*)",
+      "Bash(mvn -f D:/OSC/Repos/stock_sim/pom.xml compile)",
+      "Bash(mvn -f D:/OSC/Repos/stock_sim/pom.xml test -Dtest=\"SessionControllerTest,TradeControllerTest,MarketControllerTest\")",
+      "Bash(mvn -f D:/OSC/Repos/stock_sim/pom.xml test)"
+    ]
+  }
+}

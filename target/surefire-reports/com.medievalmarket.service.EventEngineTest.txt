@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.medievalmarket.service.EventEngineTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.037 s -- in com.medievalmarket.service.EventEngineTest

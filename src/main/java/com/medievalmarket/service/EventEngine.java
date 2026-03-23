@@ -42,7 +42,7 @@ public class EventEngine {
     private static final Set<String> PLAGUE_PRIMARY = Set.of("Livestock", "Grain");
 
     public FiredEvent maybeFireEvent() {
-        if (ThreadLocalRandom.current().nextDouble() > 0.10) return null;
+        if (ThreadLocalRandom.current().nextDouble() > 0.04) return null;
 
         if (ThreadLocalRandom.current().nextInt(7) == 0) {
             return buildPlagueEvent();
