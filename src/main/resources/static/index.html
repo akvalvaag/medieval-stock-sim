@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 17px; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e2f0; min-height: 100vh; }
     button { cursor: pointer; border: none; border-radius: 6px; padding: 4px 10px; font-size: .8rem; }
 
@@ -21,14 +22,21 @@
     .reconnect-banner { background: #7f1d1d; color: #fca5a5; padding: .4rem 1rem; text-align: center; font-size: .85rem; }
 
     .event-banner {
+      position: fixed;
+      top: 3.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
       background: #78350f;
       border: 1px solid #fbbf24;
       color: #fde68a;
-      padding: .6rem 1rem;
-      margin: .5rem 1rem;
+      padding: .65rem 1.4rem;
       border-radius: 8px;
-      font-size: .95rem;
+      font-size: 1rem;
       font-weight: bold;
+      white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+      pointer-events: none;
     }
     .event-banner-fade {
       opacity: 0;
@@ -49,8 +57,8 @@
     .price-down { color: #f87171; }
     .price-neutral { color: #94a3b8; }
     .cat-badge { font-size: .65rem; background: #2a2a4e; padding: 2px 6px; border-radius: 10px; color: #a78bfa; }
-    .chart-cell { width: 120px; }
-    canvas.sparkline { width: 120px !important; height: 36px !important; }
+    .chart-cell { width: 140px; }
+    canvas.sparkline { width: 140px !important; height: 42px !important; }
 
     /* Quick-trade button groups */
     .trade-group { display: flex; gap: 3px; align-items: center; }
