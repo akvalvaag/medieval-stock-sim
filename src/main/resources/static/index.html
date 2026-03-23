@@ -174,6 +174,7 @@
               <th>Category</th>
               <th>Price</th>
               <th class="chart-cell">Trend</th>
+              <th>Held</th>
               <th>Buy</th>
               <th>Sell</th>
             </tr>
@@ -185,6 +186,7 @@
               <td><span class="cat-badge">{{ good.category }}</span></td>
               <td :class="priceClass(good.name)">{{ fmt(prices[good.name]) }}g {{ priceArrow(good.name) }}</td>
               <td class="chart-cell"><canvas :ref="el => registerCanvas(good.name, el)" class="sparkline"></canvas></td>
+              <td style="color:#a78bfa;text-align:center;min-width:36px">{{ session.holdings[good.name] || '' }}</td>
 
               <!-- Buy buttons: 1 / 10 / 100 / Max -->
               <td>
@@ -376,8 +378,10 @@ createApp({
       if (!canvasRefs[name]) return;
       const data = history.slice(-30);
       if (charts[name]) {
+        const color = data[data.length - 1] > data[0] ? '#4ade80' : '#f87171';
         charts[name].data.labels = data.map(() => '');
         charts[name].data.datasets[0].data = data;
+        charts[name].data.datasets[0].borderColor = color;
         charts[name].update('none');
         return;
       }
