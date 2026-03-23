@@ -123,6 +123,41 @@
     .diff-easy { color: #4ade80; }
     .diff-medium { color: #fbbf24; }
     .diff-hard { color: #f87171; }
+
+    /* Season badge */
+    .season-badge { display:flex; align-items:center; gap:.4rem; background:#1e1e30; border:1px solid #a78bfa44; border-radius:6px; padding:.3rem .7rem; font-size:.75rem; color:#a78bfa; }
+    .season-progress { width:60px; height:3px; background:#2a2a3a; border-radius:2px; }
+    .season-fill { height:3px; background:#a78bfa; border-radius:2px; transition:width .5s; }
+    /* Moneylender */
+    .debt-label { color:#f87171; font-size:.72rem; }
+    .btn-repay { background:#7f1d1d; color:#fca5a5; border:none; border-radius:4px; padding:5px 10px; font-size:.78rem; cursor:pointer; }
+    .btn-borrow { background:#1e1e30; color:#a78bfa; border:1px solid #a78bfa44; border-radius:4px; padding:5px 10px; font-size:.78rem; cursor:pointer; }
+    /* Orders */
+    .panel-section { padding:.7rem 1rem; border-bottom:1px solid #2a2a4e; }
+    .panel-header { display:flex; justify-content:space-between; align-items:center; font-size:.75rem; color:#a78bfa; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem; }
+    .order-row { display:flex; justify-content:space-between; align-items:center; font-size:.75rem; padding:.2rem 0; color:#e2e2f0; }
+    .btn-cancel { background:none; border:none; color:#f87171; cursor:pointer; font-size:.85rem; padding:0 4px; }
+    .btn-add-order { background:#1e1e30; color:#a78bfa; border:1px solid #a78bfa44; border-radius:4px; padding:4px 10px; font-size:.76rem; cursor:pointer; margin-top:.4rem; }
+    .btn-add-order:disabled { opacity:.4; cursor:not-allowed; }
+    .order-form { display:flex; gap:.3rem; flex-wrap:wrap; margin-top:.4rem; align-items:center; }
+    .order-form select, .order-form input { background:#11111a; border:1px solid #2a2a4e; color:#e2e2f0; border-radius:4px; padding:2px 4px; font-size:.76rem; }
+    /* Alerts */
+    .col-bell { width:28px; text-align:center; position:relative; }
+    .bell-icon { cursor:pointer; font-size:.85rem; }
+    .bell-active { filter:sepia(1) saturate(5) hue-rotate(5deg); }
+    .bell-dim { opacity:.3; }
+    .alert-popover { position:absolute; right:0; top:1.6rem; z-index:200; background:#1e1e30; border:1px solid #a78bfa44; border-radius:6px; padding:.5rem .6rem; font-size:.75rem; min-width:150px; }
+    .alert-banner { background:#78350f; border-color:#d97706; color:#fde68a; }
+    /* Achievements */
+    .badge-shelf { display:flex; flex-wrap:wrap; gap:.3rem; }
+    .badge { border-radius:5px; padding:3px 7px; font-size:.7rem; }
+    .badge-unlocked { background:#1e1e30; border:1px solid #fbbf2466; color:#fbbf24; }
+    .badge-locked { background:#111; border:1px solid #2a2a3a; color:#444; }
+    .achievement-banner { background:#064e3b; border-color:#34d399; color:#d1fae5; }
+    /* Dim helper */
+    .dim { color:#888; font-size:.72rem; }
+    /* Net worth chart */
+    .nw-chart-wrap { margin-top:.4rem; }
   </style>
 </head>
 <body>
@@ -166,6 +201,17 @@
       <span v-if="events.length === 0" style="color:#555">Awaiting market news…</span>
     </div>
 
+    <div style="display:flex; align-items:center; gap:.8rem; padding:.3rem 1rem; background:#0f0f1a; border-bottom:1px solid #2a2a4e;">
+      <div class="season-badge">
+        <span>{{ seasonIcon }}</span>
+        <strong>{{ session.season }}</strong>
+        <div class="season-progress">
+          <div class="season-fill" :style="{ width: seasonProgress + '%' }"></div>
+        </div>
+        <span class="dim">{{ session.seasonTicksRemaining }}t</span>
+      </div>
+    </div>
+
     <div class="main">
       <!-- MARKET PANEL -->
       <div class="market-panel">
@@ -173,6 +219,8 @@
         <div v-if="eventBanner" class="event-banner" :class="{ 'event-banner-fade': eventBannerFading }">
           &#x26A1; {{ eventBanner }}
         </div>
+        <div v-if="alertMessage" class="event-banner alert-banner">🔔 {{ alertMessage }}</div>
+        <div v-if="achievementToast" class="event-banner achievement-banner">{{ achievementToast }}</div>
 
         <h2 class="section-title">Market — {{ goods.length }} goods</h2>
         <table>
@@ -185,12 +233,13 @@
               <th>Held</th>
               <th>Sell</th>
               <th>Buy</th>
+              <th class="col-bell">🔔</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="good in goods" :key="good.name"
                 :class="{ 'event-flash': flashedGoods.has(good.name) }">
-              <td>{{ good.name }}</td>
+              <td>{{ goodIcon(good.name) }} {{ good.name }}</td>
               <td><span class="cat-badge">{{ good.category }}</span></td>
               <td :class="priceClass(good.name)">{{ fmt(prices[good.name]) }}g {{ priceArrow(good.name) }}</td>
               <td class="chart-cell"><canvas :ref="el => registerCanvas(good.name, el)" class="sparkline"></canvas></td>
@@ -231,6 +280,18 @@
                           @click="trade('buy', good.name, buyMax(good.name))">Max</button>
                 </div>
               </td>
+              <td class="col-bell">
+                <span :class="['bell-icon', hasAlert(good.name) ? 'bell-active' : 'bell-dim']"
+                      @click.stop="toggleAlertPopover(good.name)">🔔</span>
+                <div v-if="alertPopover === good.name" class="alert-popover" @click.stop>
+                  <div>Above: <input type="number" v-model.number="alertAbove" placeholder="—" style="width:55px">g</div>
+                  <div>Below: <input type="number" v-model.number="alertBelow" placeholder="—" style="width:55px">g</div>
+                  <div style="display:flex;gap:.4rem;margin-top:.3rem">
+                    <button class="btn-buy" style="padding:3px 8px;font-size:.72rem" @click="setAlert(good.name)">Set</button>
+                    <button class="btn-sell" style="padding:3px 8px;font-size:.72rem" @click="clearAlert(good.name)">Clear</button>
+                  </div>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -259,6 +320,70 @@
 
           <div v-if="Object.keys(session.holdings).length === 0" style="color:#555;font-size:.8rem">No holdings</div>
           <div class="net-worth">Net worth: <strong>{{ fmt(netWorth) }}g</strong></div>
+          <!-- Net worth chart -->
+          <div class="nw-chart-wrap" v-if="netWorthHistory.length > 1">
+            <canvas id="nw-chart" width="160" height="32"></canvas>
+          </div>
+        </div>
+
+        <!-- Limit Orders Panel -->
+        <div class="panel-section">
+          <div class="panel-header">
+            <span>📋 Orders</span>
+            <span class="dim">{{ session.limitOrders.length }}/3</span>
+          </div>
+          <div v-for="order in session.limitOrders" :key="order.id" class="order-row">
+            <span>{{ order.direction }} {{ goodIcon(order.goodName) }} {{ order.goodName }}
+              {{ order.direction === 'BUY' ? '≤' : '≥' }}{{ order.targetPrice }}g × {{ order.quantity }}</span>
+            <button class="btn-cancel" @click="cancelOrder(order.id)">✕</button>
+          </div>
+          <button class="btn-add-order" @click="session.showAddOrder = !session.showAddOrder"
+            :disabled="session.limitOrders.length >= 3">+ Add Order</button>
+          <div v-if="session.showAddOrder" class="order-form">
+            <select v-model="session.newOrder.goodName">
+              <option v-for="g in allGoods" :key="g" :value="g">{{ goodIcon(g) }} {{ g }}</option>
+            </select>
+            <select v-model="session.newOrder.direction">
+              <option value="BUY">BUY</option><option value="SELL">SELL</option>
+            </select>
+            <input type="number" v-model.number="session.newOrder.quantity" min="1" placeholder="Qty" style="width:50px">
+            <input type="number" v-model.number="session.newOrder.targetPrice" min="0" placeholder="Price" style="width:60px">
+            <button class="btn-buy" @click="addOrder">Set</button>
+          </div>
+        </div>
+
+        <!-- Moneylender Panel -->
+        <div class="panel-section moneylender">
+          <div class="panel-header">
+            <span>🏦 Moneylender</span>
+            <span v-if="session.loanAmount > 0" class="debt-label">
+              Debt: {{ session.loanAmount.toFixed(1) }}g (+2%/tick)
+            </span>
+          </div>
+          <div style="display:flex;gap:.4rem;margin-top:.4rem">
+            <button class="btn-repay" @click="repay"
+              :disabled="session.loanAmount <= 0 || session.gold <= 0">Repay</button>
+            <button class="btn-borrow" @click="session.showBorrow = !session.showBorrow">Borrow</button>
+          </div>
+          <div v-if="session.showBorrow" style="display:flex;gap:.4rem;margin-top:.4rem;align-items:center">
+            <input type="number" v-model.number="session.borrowAmount" min="50"
+              :max="Math.min(session.gold * 2, 5000)" style="width:80px">
+            <span class="dim">max: {{ Math.min(session.gold * 2, 5000).toFixed(0) }}g</span>
+            <button class="btn-buy" @click="borrow" :disabled="session.borrowAmount < 50">OK</button>
+          </div>
+        </div>
+
+        <!-- Achievements Panel -->
+        <div class="panel-section">
+          <div class="panel-header">🏅 Achievements ({{ achievements.length }}/12)</div>
+          <div class="badge-shelf">
+            <div v-for="a in allAchievements" :key="a.id"
+                 :class="['badge', achievements.includes(a.id) ? 'badge-unlocked' : 'badge-locked']"
+                 :title="a.name">
+              <span v-if="achievements.includes(a.id)">{{ a.icon }} {{ a.name }}</span>
+              <span v-else>🔒 ???</span>
+            </div>
+          </div>
         </div>
 
         <div class="scoreboard">
@@ -283,6 +408,27 @@
 <script>
 const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 
+const GOOD_ICONS = {
+  Grain:'🌾', Wool:'🧶', Livestock:'🐄', Ale:'🍺', Spices:'🌶️',
+  Iron:'⚙️', Coal:'🪨', Stone:'🪨', Gems:'💎', Salt:'🧂',
+  Timber:'🪵', Rope:'🪢', Cloth:'🧵', Leather:'🫙', Candles:'🕯️'
+};
+
+const ACHIEVEMENTS = [
+  { id: 'first_trade',    icon: '✅', name: 'First Steps',        check: (ctx) => ctx.anyTrade },
+  { id: 'fortune_1k',     icon: '💰', name: "Fortune's Child",    check: (ctx) => ctx.netWorth >= 1000 },
+  { id: 'fortune_5k',     icon: '💎', name: 'Merchant Prince',    check: (ctx) => ctx.netWorth >= 5000 },
+  { id: 'fortune_10k',    icon: '👑', name: 'Marketplace Legend', check: (ctx) => ctx.netWorth >= 10000 },
+  { id: 'war_profiteer',  icon: '⚔️', name: 'War Profiteer',      check: (ctx) => ctx.warSell },
+  { id: 'hoarder',        icon: '📦', name: 'Hoarder',            check: (ctx) => ctx.distinctGoods >= 6 },
+  { id: 'gem_baron',      icon: '💎', name: 'Gem Baron',          check: (ctx) => ctx.gems >= 10 },
+  { id: 'debt_free',      icon: '🏦', name: 'Debt Free',          check: (ctx) => ctx.debtCleared },
+  { id: 'limit_master',   icon: '📋', name: 'Limit Master',       check: (ctx) => ctx.orders >= 3 },
+  { id: 'seasonal_trader',icon: '🌍', name: 'Seasonal Trader',    check: (ctx) => ctx.allSeasons },
+  { id: 'plague_survivor',icon: '🦠', name: 'Plague Survivor',    check: (ctx) => ctx.plagueOk },
+  { id: 'lucky_streak',   icon: '🍀', name: 'Lucky Streak',       check: (ctx) => ctx.streak >= 3 },
+];
+
 createApp({
   setup() {
     // ── Reactive state ────────────────────────────────────────────────────────
@@ -292,7 +438,15 @@ createApp({
       gold: 0,
       holdings: {},
       playerClass: '',
-      costBasis: {}
+      costBasis: {},
+      season: 'SPRING',
+      seasonTicksRemaining: 60,
+      loanAmount: 0.0,
+      limitOrders: [],
+      showAddOrder: false,
+      newOrder: { goodName: 'Grain', direction: 'BUY', quantity: 1, targetPrice: 0 },
+      showBorrow: false,
+      borrowAmount: 100,
     });
 
     const prices    = reactive({});
@@ -307,9 +461,24 @@ createApp({
     const eventBannerFading = ref(false);
     const flashedGoods     = ref(new Set());
 
+    // Price alerts & achievements
+    const priceAlerts = reactive({});
+    const alertPopover = ref(null);
+    const alertAbove = ref('');
+    const alertBelow = ref('');
+    const alertMessage = ref(null);
+    const achievementToast = ref(null);
+    const achievements = ref(JSON.parse(localStorage.getItem('mms_achievements') || '[]'));
+    let consecutiveProfits = 0;
+    const seasonsWithProfit = new Set();
+    let warTicksRemaining = 0;
+    let prevNetWorth = null;
+
     // Chart internals
     const charts    = {};
     const canvasRefs = {};
+    let nwChart = null;
+    const netWorthHistory = ref([]);
 
     // ── Formatting helpers ────────────────────────────────────────────────────
     const fmt = v => (v == null ? '0.00' : Number(v).toFixed(2));
@@ -409,12 +578,196 @@ createApp({
       });
     };
 
+    // ── Good icon helper ──────────────────────────────────────────────────────
+    const goodIcon = name => GOOD_ICONS[name] || '📦';
+
+    // ── Net worth chart ───────────────────────────────────────────────────────
+    const updateNetWorthChart = () => {
+      const canvas = document.getElementById('nw-chart');
+      if (!canvas || netWorthHistory.value.length < 2) return;
+      const color = netWorthHistory.value[netWorthHistory.value.length - 1] >=
+        netWorthHistory.value[0] ? '#4ade80' : '#f87171';
+      if (nwChart) {
+        nwChart.data.datasets[0].data = [...netWorthHistory.value];
+        nwChart.data.datasets[0].borderColor = color;
+        nwChart.update('none');
+      } else {
+        nwChart = new Chart(canvas, {
+          type: 'line',
+          data: { labels: netWorthHistory.value.map(() => ''),
+                  datasets: [{ data: [...netWorthHistory.value], borderColor: color,
+                               borderWidth: 1.5, pointRadius: 0, tension: 0.3,
+                               fill: false }] },
+          options: { animation: false, plugins: { legend: { display: false } },
+                     scales: { x: { display: false }, y: { display: false } } }
+        });
+      }
+    };
+
+    // ── Season computed ───────────────────────────────────────────────────────
+    const seasonIcon = computed(() => (
+      { SPRING: '🌱', SUMMER: '☀️', AUTUMN: '🍂', WINTER: '❄️' }[session.season] || '🌱'
+    ));
+    const seasonProgress = computed(() =>
+      Math.round((1 - session.seasonTicksRemaining / 60) * 100)
+    );
+
+    // ── Achievement helpers ───────────────────────────────────────────────────
+    const unlockAchievement = (id) => {
+      if (achievements.value.includes(id)) return;
+      achievements.value.push(id);
+      localStorage.setItem('mms_achievements', JSON.stringify(achievements.value));
+      const def = ACHIEVEMENTS.find(a => a.id === id);
+      if (def) {
+        achievementToast.value = def.icon + ' ' + def.name + ' unlocked!';
+        setTimeout(() => { achievementToast.value = null; }, 3000);
+      }
+    };
+
+    const checkAchievements = (ctx) => {
+      for (const a of ACHIEVEMENTS) {
+        if (!achievements.value.includes(a.id) && a.check(ctx)) {
+          unlockAchievement(a.id);
+        }
+      }
+    };
+
+    const checkAchievementsOnTick = (data) => {
+      if (warTicksRemaining > 0) warTicksRemaining--;
+      const nw = session.gold + Object.entries(session.holdings)
+        .reduce((s,[g,q]) => s + (prices[g]||0)*q, 0);
+      const gems = session.holdings['Gems'] || 0;
+      const distinctGoods = Object.keys(session.holdings).length;
+      let plagueOk = false;
+      if (data.event && data.event.includes('Plague') && prevNetWorth != null) {
+        plagueOk = nw >= prevNetWorth;
+      }
+      prevNetWorth = nw;
+      if (data.event && data.event.includes('War')) warTicksRemaining = 2;
+      checkAchievements({
+        netWorth: nw, gems, distinctGoods,
+        orders: session.limitOrders.length,
+        allSeasons: ['SPRING','SUMMER','AUTUMN','WINTER'].every(s => seasonsWithProfit.has(s)),
+        plagueOk,
+        anyTrade: false, warSell: false, debtCleared: false, streak: consecutiveProfits,
+      });
+    };
+
+    const checkAchievementsOnSell = (realizedPnl, goodName) => {
+      if (realizedPnl > 0) {
+        consecutiveProfits++;
+        seasonsWithProfit.add(session.season);
+      } else {
+        consecutiveProfits = 0;
+      }
+      const warSell = warTicksRemaining > 0 && ['Iron','Coal','Timber','Rope'].includes(goodName);
+      checkAchievements({
+        netWorth: 0, gems: 0, distinctGoods: 0, orders: 0,
+        allSeasons: ['SPRING','SUMMER','AUTUMN','WINTER'].every(s => seasonsWithProfit.has(s)),
+        plagueOk: false, anyTrade: true, warSell,
+        debtCleared: false, streak: consecutiveProfits,
+      });
+    };
+
+    // ── Price alert helpers ───────────────────────────────────────────────────
+    const flashAlertBanner = (message) => {
+      alertMessage.value = message;
+      setTimeout(() => { alertMessage.value = null; }, 3000);
+    };
+
+    const hasAlert = (name) => {
+      const a = priceAlerts[name];
+      return a && (a.above != null || a.below != null);
+    };
+
+    const toggleAlertPopover = (name) => {
+      if (alertPopover.value === name) { alertPopover.value = null; return; }
+      alertPopover.value = name;
+      const a = priceAlerts[name] || {};
+      alertAbove.value = a.above ?? '';
+      alertBelow.value = a.below ?? '';
+    };
+
+    const setAlert = (name) => {
+      priceAlerts[name] = {
+        above: alertAbove.value !== '' ? Number(alertAbove.value) : null,
+        below: alertBelow.value !== '' ? Number(alertBelow.value) : null
+      };
+      alertPopover.value = null;
+    };
+
+    const clearAlert = (name) => {
+      delete priceAlerts[name];
+      alertPopover.value = null;
+    };
+
+    // ── Limit order & moneylender methods ────────────────────────────────────
+    const allGoods = computed(() => Object.keys(prices));
+
+    const addOrder = async () => {
+      const r = await fetch('/api/orders', { method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ sessionId: session.id, ...session.newOrder }) });
+      if (r.ok) {
+        const d = await r.json();
+        session.limitOrders = d.orders;
+        session.gold = d.gold;
+        session.showAddOrder = false;
+      }
+    };
+
+    const cancelOrder = async (id) => {
+      const r = await fetch(`/api/orders/${id}?sessionId=${session.id}`, { method: 'DELETE' });
+      if (r.ok) {
+        const d = await r.json();
+        session.limitOrders = d.orders;
+      }
+    };
+
+    const borrow = async () => {
+      const r = await fetch('/api/moneylender/borrow', { method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ sessionId: session.id, amount: session.borrowAmount }) });
+      if (r.ok) {
+        const d = await r.json();
+        session.gold = d.gold;
+        session.loanAmount = d.loanAmount;
+        session.showBorrow = false;
+      } else {
+        const e = await r.json(); alert(e.error);
+      }
+    };
+
+    const repay = async () => {
+      const r = await fetch('/api/moneylender/repay', { method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ sessionId: session.id }) });
+      if (r.ok) {
+        const d = await r.json();
+        session.gold = d.gold;
+        session.loanAmount = d.loanAmount;
+      }
+    };
+
     // ── WebSocket tick handler ────────────────────────────────────────────────
     const applyTick = (payload) => {
       // Capture old prices before overwriting
       const oldPrices = { ...prices };
       for (const [k, v] of Object.entries(prices)) prevPrices[k] = v;
       for (const [k, v] of Object.entries(payload.prices)) prices[k] = v;
+
+      // Check price alerts (after prevPrices is updated)
+      for (const [name, alert] of Object.entries(priceAlerts)) {
+        const prev = prevPrices[name];
+        const curr = prices[name];
+        if (prev == null || curr == null) continue;
+        if (alert.above != null && prev < alert.above && curr >= alert.above) {
+          flashAlertBanner(name + ' reached ' + Number(curr).toFixed(1) + 'g (above target)');
+        }
+        if (alert.below != null && prev > alert.below && curr <= alert.below) {
+          flashAlertBanner(name + ' dropped to ' + Number(curr).toFixed(1) + 'g (below target)');
+        }
+      }
 
       // Update sparkline charts
       if (payload.history) {
@@ -455,6 +808,20 @@ createApp({
       }
 
       if (payload.scoreboard) scoreboard.value = payload.scoreboard;
+
+      if (payload.season) {
+        session.season = payload.season;
+        session.seasonTicksRemaining = payload.seasonTicksRemaining;
+      }
+
+      // Net worth history
+      const nw = session.gold + Object.entries(session.holdings)
+        .reduce((sum, [g, q]) => sum + (prices[g] || 0) * q, 0);
+      if (netWorthHistory.value.length >= 20) netWorthHistory.value.shift();
+      netWorthHistory.value.push(nw);
+      nextTick(() => updateNetWorthChart());
+
+      checkAchievementsOnTick(payload);
     };
 
     // ── STOMP / WebSocket ─────────────────────────────────────────────────────
@@ -463,12 +830,23 @@ createApp({
 
     const connect = () => {
       stompClient = new StompJs.Client({
-        webSocketFactory: () => new SockJS('/ws'),
+        webSocketFactory: () => new SockJS('/ws?sessionId=' + session.id),
         onConnect: () => {
           reconnecting.value = false;
           reconnectAttempts = 0;
           stompClient.subscribe('/topic/market', msg => {
             if (!reconnecting.value) applyTick(JSON.parse(msg.body));
+          });
+          stompClient.subscribe('/user/queue/updates', msg => {
+            const update = JSON.parse(msg.body);
+            session.gold = update.gold;
+            session.loanAmount = update.loanAmount;
+            session.limitOrders = update.limitOrders;
+            for (const fill of (update.limitOrderFills || [])) {
+              if (fill.direction === 'SELL') {
+                checkAchievementsOnSell(fill.realizedPnl, fill.goodName);
+              }
+            }
           });
           // Fetch snapshot to seed prices and charts
           fetch('/api/market/snapshot').then(r => r.json()).then(snap => {
@@ -499,6 +877,10 @@ createApp({
       session.holdings    = data.holdings    || {};
       session.playerClass = data.playerClass || '';
       session.costBasis   = data.costBasis   || {};
+      session.season = data.season || 'SPRING';
+      session.seasonTicksRemaining = data.seasonTicksRemaining || 60;
+      session.loanAmount = data.loanAmount || 0.0;
+      session.limitOrders = data.limitOrders || [];
       localStorage.setItem('sessionId', data.sessionId);
     };
 
@@ -550,10 +932,20 @@ createApp({
         session.gold      = data.gold;
         session.holdings  = data.holdings;
         session.costBasis = data.costBasis || session.costBasis;
+        if (data.loanAmount !== undefined) session.loanAmount = data.loanAmount;
+        if (data.currentSeason) session.season = data.currentSeason;
         localStorage.setItem('portfolio', JSON.stringify({
           gold: data.gold,
           holdings: data.holdings
         }));
+        // after buy
+        if (action === 'buy') {
+          checkAchievements({ anyTrade: true, netWorth:0, gems:0, distinctGoods:0, orders:0, allSeasons:false, plagueOk:false, warSell:false, debtCleared:false, streak:0 });
+        }
+        // after sell
+        if (action === 'sell') {
+          checkAchievementsOnSell(data.realizedPnl || 0, goodName);
+        }
       } else {
         alert(data.error || 'Trade failed');
       }
@@ -582,7 +974,16 @@ createApp({
       trendClass, trendIcon,
       pnlClass, pnlPerUnit, pnlPct, pnlSign,
       canBuy, buyMax, canSell,
-      startSession, trade, registerCanvas
+      startSession, trade, registerCanvas,
+      netWorthHistory, updateNetWorthChart,
+      seasonIcon, seasonProgress,
+      priceAlerts, alertPopover, alertAbove, alertBelow, alertMessage,
+      achievementToast, achievements,
+      allGoods, allAchievements: ACHIEVEMENTS,
+      goodIcon,
+      hasAlert, toggleAlertPopover, setAlert, clearAlert,
+      addOrder, cancelOrder, borrow, repay,
+      checkAchievementsOnSell, checkAchievementsOnTick,
     };
   }
 }).mount('#app');
