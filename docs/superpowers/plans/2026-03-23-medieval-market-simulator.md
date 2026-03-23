@@ -1050,8 +1050,8 @@ public class EventEngine {
         new EventDef("War declared! Weapons and lumber in demand.",
             Map.of("Iron", new double[]{0.30, 0.40},
                    "Coal", new double[]{0.30, 0.40},
-                   "Timber", new double[]{0.15, 0.30},
-                   "Rope", new double[]{0.15, 0.30})),
+                   "Timber", new double[]{0.30, 0.40},
+                   "Rope", new double[]{0.30, 0.40})),
         new EventDef("Gem smugglers caught! Gem prices rise.",
             Map.of("Gems", new double[]{0.15, 0.25})),
         new EventDef("Wool shortage grips the kingdom!",
@@ -1103,6 +1103,8 @@ public class EventEngine {
     }
 }
 
+```
+
 - [ ] **Step 4: Run tests to confirm they pass**
 
 ```bash
@@ -1116,7 +1118,7 @@ Expected: All 3 tests PASS.
 ```bash
 git add src/main/java/com/medievalmarket/service/EventEngine.java \
         src/test/java/com/medievalmarket/service/EventEngineTest.java
-git commit -m "feat: event engine with 6 market events"
+git commit -m "feat: event engine with 7 market events including Plague"
 ```
 
 ---
@@ -1883,7 +1885,7 @@ public class MarketEngine {
 ./mvnw spring-boot:run
 ```
 
-Expected: Server starts; every 5 seconds a tick fires (visible in logs if you add a log statement temporarily). No errors.
+Expected: Server starts with no errors. To confirm ticking is active, open `http://localhost:8080/api/market/snapshot` in a browser — refresh it twice ~5 seconds apart and verify that prices have changed between requests.
 
 - [ ] **Step 4: Commit**
 
@@ -2249,7 +2251,7 @@ public class MarketController {
 - [ ] **Step 4: Run tests to confirm they pass**
 
 ```bash
-./mvnw test -pl . -Dtest="SessionControllerTest,TradeControllerTest"
+./mvnw test -pl . -Dtest="SessionControllerTest,TradeControllerTest,MarketControllerTest"
 ```
 
 Expected: All tests PASS.
