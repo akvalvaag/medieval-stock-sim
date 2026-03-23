@@ -28,7 +28,7 @@ public class SeasonEngine {
     private int seasonIndex = 0;
     private int tickInSeason = 0;
 
-    public void advanceTick() {
+    public synchronized void advanceTick() {
         tickInSeason++;
         if (tickInSeason >= TICKS_PER_SEASON) {
             tickInSeason = 0;
@@ -36,16 +36,16 @@ public class SeasonEngine {
         }
     }
 
-    public String getCurrentSeason() {
+    public synchronized String getCurrentSeason() {
         return SEASONS[seasonIndex];
     }
 
-    public int getTicksRemaining() {
+    public synchronized int getTicksRemaining() {
         return TICKS_PER_SEASON - tickInSeason;
     }
 
     /** Per-tick modifier strengths (divide by 100 when applying as a nudge). */
-    public Map<String, Double> getModifiers() {
+    public synchronized Map<String, Double> getModifiers() {
         return SEASON_MODIFIERS.get(getCurrentSeason());
     }
 }
