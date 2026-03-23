@@ -59,7 +59,7 @@ class LimitOrderServiceTest {
         Map<String, List<LimitOrderFill>> fills = service.processAll(List.of(p));
         assertThat(p.getHolding("Iron")).isEqualTo(1);
         assertThat(fills.get("s1")).hasSize(1);
-        assertThat(fills.get("s1").get(0).realizedPnl()).isNotNaN();
+        assertThat(fills.get("s1").get(0).realizedPnl()).isFinite();
     }
 
     @Test
@@ -85,5 +85,40 @@ class LimitOrderServiceTest {
         p.addLimitOrder(new LimitOrder("id1", "s1", "Iron", "BUY", 1, 10.0)); // below price
         Map<String, List<LimitOrderFill>> fills = service.processAll(List.of(p));
         assertThat(fills.getOrDefault("s1", List.of())).isEmpty();
+    }
+
+    @Test
+    void addOrderRejectsInvalidDirection() {
+        Portfolio p = noble();
+        assertThatThrownBy(() -> service.addOrder(p, "Iron", "HOLD", 1, 40.0))
+            .isInstanceOf(LimitOrderService.LimitOrderException.class)
+            .hasMessage("INVALID_DIRECTION");
+    }
+
+    @Test
+    void addOrderRejectsZeroQuantity() {
+        Portfolio p = noble();
+        assertThatThrownBy(() -> service.addOrder(p, "Iron", "BUY", 0, 40.0))
+            .isInstanceOf(LimitOrderService.LimitOrderException.class)
+            .hasMessage("INVALID_QUANTITY");
+    }
+
+    @Test
+    void addOrderRejectsNonPositivePrice() {
+        Portfolio p = noble();
+        assertThatThrownBy(() -> service.addOrder(p, "Iron", "BUY", 1, 0.0))
+            .isInstanceOf(LimitOrderService.LimitOrderException.class)
+            .hasMessage("INVALID_PRICE");
+    }
+
+    @Test
+    void addOrderRejectsWhenAtLimit() {
+        Portfolio p = noble();
+        service.addOrder(p, "Iron", "BUY", 1, 10.0);
+        service.addOrder(p, "Iron", "BUY", 1, 10.0);
+        service.addOrder(p, "Iron", "BUY", 1, 10.0);
+        assertThatThrownBy(() -> service.addOrder(p, "Iron", "BUY", 1, 10.0))
+            .isInstanceOf(LimitOrderService.LimitOrderException.class)
+            .hasMessage("MAX_ORDERS_REACHED");
     }
 }

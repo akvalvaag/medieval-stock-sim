@@ -71,6 +71,12 @@ public class LimitOrderService {
         if (!"BUY".equals(direction) && !"SELL".equals(direction)) {
             throw new LimitOrderException("INVALID_DIRECTION");
         }
+        if (quantity <= 0) {
+            throw new LimitOrderException("INVALID_QUANTITY");
+        }
+        if (targetPrice <= 0) {
+            throw new LimitOrderException("INVALID_PRICE");
+        }
         catalogue.findByName(goodName); // throws if unknown good
         LimitOrder order = new LimitOrder(
             UUID.randomUUID().toString(), portfolio.getSessionId(),
