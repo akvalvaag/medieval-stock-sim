@@ -60,7 +60,9 @@ public class MarketEngine {
             prices,
             priceHistory.getAllHistory(),
             event != null ? event.message() : null,
-            scoreboard
+            scoreboard,
+            "SPRING",   // placeholder — SeasonEngine wired in Task 7
+            60          // placeholder
         );
         messagingTemplate.convertAndSend("/topic/market", payload);
     }

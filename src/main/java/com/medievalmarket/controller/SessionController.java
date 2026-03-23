@@ -26,17 +26,22 @@ public class SessionController {
             return ResponseEntity.badRequest().body(Map.of("error", "INVALID_CLASS"));
         }
         Portfolio p = registry.createSession(playerClass);
-        return ResponseEntity.ok(new SessionStartResponse(
-            p.getSessionId(), p.getPlayerName(), p.getPlayerClass().name(),
-            p.getGold(), p.getHoldings(), p.getAllCostBasis()));
+        return ResponseEntity.ok(toResponse(p));
     }
 
     @GetMapping("/{sessionId}")
     public ResponseEntity<?> resume(@PathVariable String sessionId) {
         return registry.findById(sessionId)
-            .map(p -> ResponseEntity.ok(new SessionStartResponse(
-                p.getSessionId(), p.getPlayerName(), p.getPlayerClass().name(),
-                p.getGold(), p.getHoldings(), p.getAllCostBasis())))
+            .map(p -> ResponseEntity.ok(toResponse(p)))
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    private SessionStartResponse toResponse(Portfolio p) {
+        return new SessionStartResponse(
+            p.getSessionId(), p.getPlayerName(), p.getPlayerClass().name(),
+            p.getGold(), p.getHoldings(), p.getAllCostBasis(),
+            "SPRING", 60,   // placeholder season — wired in Task 7
+            p.getLoanAmount(), p.getLimitOrders()
+        );
     }
 }

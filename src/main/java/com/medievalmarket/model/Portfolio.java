@@ -2,8 +2,10 @@ package com.medievalmarket.model;
 
 import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Portfolio {
@@ -15,12 +17,20 @@ public class Portfolio {
     private final Map<String, Double> avgCostBasis = new HashMap<>();
     private final Deque<Double> netWorthHistory = new ArrayDeque<>();
     private Instant lastTradeTime = Instant.now();
+    private final boolean bot;
+    private double loanAmount = 0.0;
+    private final List<LimitOrder> limitOrders = new ArrayList<>();
 
     public Portfolio(String sessionId, String playerName, PlayerClass playerClass) {
+        this(sessionId, playerName, playerClass, false);
+    }
+
+    public Portfolio(String sessionId, String playerName, PlayerClass playerClass, boolean bot) {
         this.sessionId = sessionId;
         this.playerName = playerName;
         this.playerClass = playerClass;
         this.gold = playerClass.getStartGold();
+        this.bot = bot;
     }
 
     public String getSessionId() { return sessionId; }
@@ -73,4 +83,16 @@ public class Portfolio {
 
     public synchronized Instant getLastTradeTime() { return lastTradeTime; }
     public synchronized void touchLastTradeTime() { this.lastTradeTime = Instant.now(); }
+
+    public boolean isBot() { return bot; }
+
+    public synchronized double getLoanAmount() { return loanAmount; }
+    public synchronized void setLoanAmount(double loanAmount) { this.loanAmount = loanAmount; }
+
+    public synchronized List<LimitOrder> getLimitOrders() { return new ArrayList<>(limitOrders); }
+    public synchronized void addLimitOrder(LimitOrder order) { limitOrders.add(order); }
+    public synchronized void removeLimitOrder(String id) {
+        limitOrders.removeIf(o -> o.id().equals(id));
+    }
+    public synchronized int limitOrderCount() { return limitOrders.size(); }
 }

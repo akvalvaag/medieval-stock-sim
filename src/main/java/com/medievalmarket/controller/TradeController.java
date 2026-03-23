@@ -53,6 +53,13 @@ public class TradeController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "UNKNOWN_GOOD"));
         }
-        return ResponseEntity.ok(new TradeResponse(portfolio.getGold(), portfolio.getHoldings(), portfolio.getAllCostBasis()));
+        return ResponseEntity.ok(new TradeResponse(
+            portfolio.getGold(),
+            portfolio.getHoldings(),
+            portfolio.getAllCostBasis(),
+            0.0,        // placeholder realizedPnl — computed properly in Task 7
+            portfolio.getLoanAmount(),
+            "SPRING"    // placeholder season — wired in Task 7
+        ));
     }
 }
