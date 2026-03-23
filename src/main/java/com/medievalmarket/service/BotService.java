@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class BotService {
@@ -18,7 +19,7 @@ public class BotService {
     private final TradeService tradeService;
     private final NameGenerator nameGenerator;
     private final List<Portfolio> bots = new ArrayList<>();
-    private int tickCounter = 0;
+    private final AtomicInteger tickCounter = new AtomicInteger(0);
 
     public BotService(SessionRegistry sessionRegistry, GoodsCatalogue catalogue,
                       TradeService tradeService, NameGenerator nameGenerator) {
@@ -37,8 +38,7 @@ public class BotService {
     }
 
     public void processTick() {
-        tickCounter++;
-        if (tickCounter % TRADE_EVERY_N_TICKS != 0) return;
+        if (tickCounter.incrementAndGet() % TRADE_EVERY_N_TICKS != 0) return;
 
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         var goods = catalogue.getGoods();

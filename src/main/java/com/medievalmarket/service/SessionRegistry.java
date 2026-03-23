@@ -55,7 +55,7 @@ public class SessionRegistry {
 
     public Collection<Portfolio> getAllActiveSessions() {
         sessions.entrySet().removeIf(e -> !e.getValue().isBot() && isExpired(e.getValue()));
-        return sessions.values(); // includes bots for scoreboard
+        return new java.util.ArrayList<>(sessions.values());
     }
 
     private boolean isExpired(Portfolio p) {
