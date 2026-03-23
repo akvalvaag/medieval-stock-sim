@@ -49,4 +49,28 @@ class SessionRegistryTest {
         registry.createSession(PlayerClass.NOBLE);
         assertThat(registry.getAllActiveSessions()).hasSize(2);
     }
+
+    @Test
+    void registerBotCreatesPortfolioWithBotFlag() {
+        SessionRegistry registry = new SessionRegistry(new NameGenerator());
+        Portfolio bot = registry.registerBot("[bot] Test");
+        assertThat(bot.isBot()).isTrue();
+    }
+
+    @Test
+    void getHumanPortfoliosExcludesBots() {
+        SessionRegistry registry = new SessionRegistry(new NameGenerator());
+        registry.registerBot("[bot] Test");
+        registry.createSession(PlayerClass.NOBLE);
+        assertThat(registry.getHumanPortfolios()).hasSize(1);
+        assertThat(registry.getHumanPortfolios()).allMatch(p -> !p.isBot());
+    }
+
+    @Test
+    void getAllActiveSessionsIncludesBots() {
+        SessionRegistry registry = new SessionRegistry(new NameGenerator());
+        registry.registerBot("[bot] Test");
+        registry.createSession(PlayerClass.NOBLE);
+        assertThat(registry.getAllActiveSessions()).hasSize(2);
+    }
 }

@@ -38,12 +38,28 @@ public class SessionRegistry {
         return Optional.of(p);
     }
 
+    public Portfolio registerBot(String name) {
+        String sessionId = UUID.randomUUID().toString();
+        Portfolio p = new Portfolio(sessionId, name, PlayerClass.MERCHANT, true);
+        p.setGold(300.0); // bots start with 300g regardless of MERCHANT's default 500g
+        sessions.put(sessionId, p);
+        return p;
+    }
+
+    public Collection<Portfolio> getHumanPortfolios() {
+        sessions.entrySet().removeIf(e -> !e.getValue().isBot() && isExpired(e.getValue()));
+        return sessions.values().stream()
+            .filter(p -> !p.isBot())
+            .collect(java.util.stream.Collectors.toList());
+    }
+
     public Collection<Portfolio> getAllActiveSessions() {
-        sessions.entrySet().removeIf(e -> isExpired(e.getValue()));
-        return sessions.values();
+        sessions.entrySet().removeIf(e -> !e.getValue().isBot() && isExpired(e.getValue()));
+        return sessions.values(); // includes bots for scoreboard
     }
 
     private boolean isExpired(Portfolio p) {
+        if (p.isBot()) return false;
         return Duration.between(p.getLastTradeTime(), Instant.now()).compareTo(EXPIRY) > 0;
     }
 }
