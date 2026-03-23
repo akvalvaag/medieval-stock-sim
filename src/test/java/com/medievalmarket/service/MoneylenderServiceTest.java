@@ -87,6 +87,7 @@ class MoneylenderServiceTest {
         service.processTick(p); // should seize Iron
         // After seizure Iron is gone and loan was reduced. Cannot reach 0 with only 100g of Iron vs 204 loan.
         // Adjusted assertion: loan must be less than 110 (confirming seizure reduced it from 204).
-        assertThat(p.getLoanAmount()).isLessThan(110.0); // seizure happened, loan reduced from 204
+        assertThat(p.getHolding("Iron")).isEqualTo(0); // all Iron seized
+        assertThat(p.getLoanAmount()).isCloseTo(104.0, within(2.0)); // 204 - 100 proceeds
     }
 }

@@ -22,24 +22,30 @@ public class MoneylenderService {
 
     public void borrow(Portfolio portfolio, double amount) {
         if (amount < MIN_BORROW) throw new LoanException("BELOW_MINIMUM");
-        double maxBorrow = Math.min(portfolio.getGold() * 2, MAX_BORROW_CAP);
-        if (amount > maxBorrow) throw new LoanException("ABOVE_LIMIT");
-        portfolio.setLoanAmount(portfolio.getLoanAmount() + amount);
-        portfolio.setGold(portfolio.getGold() + amount);
+        synchronized (portfolio) {
+            double maxBorrow = Math.min(portfolio.getGold() * 2, MAX_BORROW_CAP);
+            if (amount > maxBorrow) throw new LoanException("ABOVE_LIMIT");
+            portfolio.setLoanAmount(portfolio.getLoanAmount() + amount);
+            portfolio.setGold(portfolio.getGold() + amount);
+        }
     }
 
     public void repay(Portfolio portfolio) {
-        double loan = portfolio.getLoanAmount();
-        if (loan <= 0.0) return;
-        double payment = Math.min(portfolio.getGold(), loan);
-        portfolio.setGold(portfolio.getGold() - payment);
-        portfolio.setLoanAmount(loan - payment);
+        synchronized (portfolio) {
+            double loan = portfolio.getLoanAmount();
+            if (loan <= 0.0) return;
+            double payment = Math.min(portfolio.getGold(), loan);
+            portfolio.setGold(portfolio.getGold() - payment);
+            portfolio.setLoanAmount(loan - payment);
+        }
     }
 
     public void processTick(Portfolio portfolio) {
-        if (portfolio.getLoanAmount() <= 0.0) return;
-        portfolio.setLoanAmount(portfolio.getLoanAmount() * INTEREST_RATE);
-        checkSolvencyAndSeize(portfolio);
+        synchronized (portfolio) {
+            if (portfolio.getLoanAmount() <= 0.0) return;
+            portfolio.setLoanAmount(portfolio.getLoanAmount() * INTEREST_RATE);
+            checkSolvencyAndSeize(portfolio);
+        }
     }
 
     public void processAll(Collection<Portfolio> humanPortfolios) {
