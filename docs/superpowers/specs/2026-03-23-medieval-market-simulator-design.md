@@ -57,6 +57,20 @@ A real-time multiplayer medieval goods trading simulator with a web frontend. Pl
 - Inactivity is defined as: no trade REST call received for the session within 2 hours
 - Sessions expire after 2 hours of inactivity; passive price-watching does not reset the timer
 
+**`NameGenerator`**
+- Assigns a random medieval alias to each player at session creation, e.g., *"Aldric the Bold"*, *"Mildred of Ironhaven"*
+- Name is composed of a medieval first name + one of: an epithet ("the Bold", "the Cunning") or a place suffix ("of Stonekeep", "of Ironhaven")
+- Name is stored in `Portfolio` and included in all scoreboard payloads; it cannot be changed after session creation
+
+**`ScoreboardService`**
+- Called by `MarketEngine` each tick after prices are updated
+- For each active session, computes `netWorth = gold + Σ(holdingQty × currentPrice)` using the freshly computed prices
+- Appends net worth to a per-session circular buffer (last 10 values, ~50 seconds of history)
+- Computes `trend = currentNetWorth − netWorthFrom5TicksAgo` (or the oldest available value if fewer than 5 ticks have elapsed)
+- Produces a ranked `ScoreboardEntry` list sorted by `netWorth` descending
+- Annotates the top 3 entries by `trend` ascending (biggest gainers) and top 3 by `trend` descending (biggest losers)
+- Result is included in the WebSocket tick broadcast
+
 **`TradeService`**
 - Handles buy/sell REST requests
 - Determines the effective fee rate from the player's class before any computation: Merchant = 0%, all others = 3% — no post-hoc refund
@@ -85,7 +99,7 @@ A real-time multiplayer medieval goods trading simulator with a web frontend. Pl
 { "class": "Merchant" }   // valid values: "Merchant", "Miner", "Noble"
 
 // Response 200
-{ "sessionId": "uuid-string", "gold": 500.0, "holdings": {} }
+{ "sessionId": "uuid-string", "playerName": "Aldric the Bold", "gold": 500.0, "holdings": {} }
 ```
 
 **`POST /api/trade/buy` and `POST /api/trade/sell` — Request body**
@@ -123,10 +137,9 @@ A real-time multiplayer medieval goods trading simulator with a web frontend. Pl
 **`MarketView`** (main screen)
 - Left panel: scrollable goods table
   - Columns: good name, category icon, current price, price delta indicator (↑↓→), sparkline chart, quantity input, buy/sell buttons
-- Right panel: portfolio sidebar
-  - Current gold balance
-  - Holdings list (good → quantity → current value)
-  - Net worth total
+- Right panel: stacked vertically
+  - **Portfolio sidebar** — gold balance, holdings list (good → quantity → current value), net worth total
+  - **Scoreboard panel** — ranked list of all active players by net worth; top 3 gainers highlighted green with ▲ trend indicator; top 3 losers highlighted red with ▼ trend indicator; current player's row is bolded
 - Top bar: scrolling event ticker showing recent market events
 
 **`useMarketStore`** (Vue composable)
@@ -135,7 +148,7 @@ A real-time multiplayer medieval goods trading simulator with a web frontend. Pl
 - **Reconnection policy:** on disconnect, retries every 3 seconds up to 5 attempts; displays a "Reconnecting…" banner in the top bar during this window; any tick received while reconnecting is discarded. On successful reconnect, fetches a fresh snapshot via `GET /api/market/snapshot` to resync state.
 
 **`usePortfolioStore`** (Vue composable)
-- Holds gold, holdings, session ID
+- Holds gold, holdings, session ID, and player name
 - Syncs to localStorage on every mutation
 - On app load: attempts to resume from localStorage session ID via `GET /api/session/{sessionId}`; redirects to class selection on 404
 
@@ -230,8 +243,9 @@ Each good has:
    d. Clamp to [basePrice × 0.10, basePrice × 5.00]
    e. Append to PriceHistory (circular buffer, max 50)
 3. Decay each good's supplyPressure: supplyPressure *= 0.70
-4. Broadcast via WebSocket /topic/market:
-   { prices: {...}, history: {...}, event: "..." | null }
+4. ScoreboardService.computeScoreboard(currentPrices) → scoreboard array
+5. Broadcast via WebSocket /topic/market:
+   { prices: {...}, history: {...}, event: "..." | null, scoreboard: [...] }
 ```
 
 ---
@@ -266,13 +280,24 @@ The `/topic/market` message is a JSON object broadcast every tick. Example (abbr
     "Iron": [40.0, 41.2, 39.8, 38.7],
     "Spices": [80.0, 82.1, 88.4, 95.2]
   },
-  "event": "Bad harvest! Grain and livestock prices surge."
+  "event": "Bad harvest! Grain and livestock prices surge.",
+  "scoreboard": [
+    { "name": "Aldric the Bold",    "class": "Merchant", "netWorth": 1240.5, "trend": 87.3,  "trending": "UP" },
+    { "name": "Mildred of Stonekeep","class": "Noble",   "netWorth": 1105.0, "trend": -42.1, "trending": "DOWN" },
+    { "name": "Godwin the Cunning", "class": "Miner",    "netWorth": 890.2,  "trend": 12.0,  "trending": "NEUTRAL" }
+  ]
 }
 ```
 
 - `prices`: map of good name (string) → current price (float, rounded to 1 decimal place)
 - `history`: map of good name → array of the last up-to-50 price points (floats), oldest first
 - `event`: event message string if an event fired this tick, or `null`
+- `scoreboard`: array of all active sessions, sorted by `netWorth` descending
+  - `name`: player's assigned medieval alias
+  - `class`: player's chosen class
+  - `netWorth`: `gold + Σ(holdingQty × currentPrice)`, rounded to 1 decimal place
+  - `trend`: net worth change over last 5 ticks (positive = gaining, negative = losing)
+  - `trending`: `"UP"` if in top 3 gainers, `"DOWN"` if in top 3 losers, `"NEUTRAL"` otherwise
 
 **`GET /api/market/snapshot` Response**
 
@@ -319,7 +344,6 @@ The server holds all sessions in-memory with no database. The application is des
 ## Out of Scope
 
 - User accounts / authentication
-- Leaderboards
 - Multiple markets / travel
 - Mobile-specific layout
 - Sound effects
