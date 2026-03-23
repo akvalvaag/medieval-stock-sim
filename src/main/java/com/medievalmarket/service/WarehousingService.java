@@ -20,8 +20,10 @@ public class WarehousingService {
         if (holdingsValue == 0.0) return;
 
         double fee = holdingsValue * portfolio.getPlayerClass().getWarehousingRate();
-        if (portfolio.getGold() - fee < 0.0) return; // skip — would go negative
-        portfolio.setGold(portfolio.getGold() - fee);
+        synchronized (portfolio) {
+            if (portfolio.getGold() - fee < 0.0) return; // skip — would go negative
+            portfolio.setGold(portfolio.getGold() - fee);
+        }
     }
 
     public void processAll(Collection<Portfolio> humanPortfolios) {
