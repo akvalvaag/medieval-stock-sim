@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Grand Bazaar</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e2e2f0; min-height: 100vh; }
+    button { cursor: pointer; border: none; border-radius: 6px; padding: 4px 10px; font-size: .8rem; }
+    input[type=number] { background: #1e1e2e; border: 1px solid #444; color: #e2e2f0; border-radius: 6px; padding: 3px 6px; width: 52px; text-align: center; }
+
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .ticker { background: #1a1a2e; border-bottom: 1px solid #2a2a4e; padding: .5rem 1rem; font-size: .8rem; color: #a78bfa; white-space: nowrap; overflow: hidden; }
+    .ticker span { margin-right: 3rem; }
+
+    .reconnect-banner { background: #7f1d1d; color: #fca5a5; padding: .4rem 1rem; text-align: center; font-size: .85rem; }
+
+    .main { display: flex; flex: 1; gap: 0; }
+    .market-panel { flex: 7; padding: 1rem; overflow-y: auto; }
+    .side-panel { flex: 3; border-left: 1px solid #2a2a4e; display: flex; flex-direction: column; }
+
+    h2.section-title { color: #a78bfa; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .6rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { color: #888; font-weight: 500; text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #2a2a4e; font-size: .75rem; text-transform: uppercase; }
+    td { padding: .5rem .6rem; border-bottom: 1px solid #1e1e2e; vertical-align: middle; }
+    tr:hover td { background: #1a1a2e; }
+    .price-up { color: #4ade80; }
+    .price-down { color: #f87171; }
+    .price-neutral { color: #94a3b8; }
+    .cat-badge { font-size: .65rem; background: #2a2a4e; padding: 2px 6px; border-radius: 10px; color: #a78bfa; }
+    .chart-cell { width: 120px; }
+    canvas.sparkline { width: 120px !important; height: 36px !important; }
+
+    .portfolio { padding: 1rem; border-bottom: 1px solid #2a2a4e; }
+    .portfolio h2 { margin-bottom: .6rem; }
+    .gold-display { font-size: 1.4rem; font-weight: bold; color: #fbbf24; margin-bottom: .5rem; }
+    .holding-row { display: flex; justify-content: space-between; font-size: .82rem; padding: .2rem 0; color: #cbd5e1; }
+    .net-worth { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid #2a2a4e; font-size: .9rem; }
+    .net-worth strong { color: #4ade80; }
+
+    .scoreboard { padding: 1rem; flex: 1; overflow-y: auto; }
+    .scoreboard h2 { margin-bottom: .6rem; }
+    .sb-row { display: flex; align-items: center; gap: .5rem; font-size: .78rem; padding: .3rem .2rem; border-bottom: 1px solid #1e1e2e; }
+    .sb-row.me { font-weight: bold; background: #1e1e2e; border-radius: 4px; }
+    .sb-rank { color: #888; width: 18px; text-align: right; flex-shrink: 0; }
+    .sb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sb-worth { flex-shrink: 0; color: #e2e2f0; }
+    .sb-trend { flex-shrink: 0; width: 28px; text-align: right; }
+    .trending-up { color: #4ade80; }
+    .trending-down { color: #f87171; }
+
+    .class-select { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 2rem; padding: 2rem; }
+    .class-select h1 { color: #a78bfa; font-size: 1.6rem; }
+    .class-cards { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
+    .class-card { background: #1e1e2e; border: 2px solid #333; border-radius: 12px; padding: 1.5rem; width: 220px; text-align: center; cursor: pointer; transition: border-color .2s; }
+    .class-card:hover { border-color: #a78bfa; }
+    .class-card .icon { font-size: 2.5rem; margin-bottom: .5rem; }
+    .class-card h3 { margin-bottom: .3rem; }
+    .class-card .difficulty { font-size: .75rem; margin-bottom: .8rem; }
+    .class-card .perk { background: #2a2a3e; border-radius: 6px; padding: .5rem; font-size: .78rem; color: #4ade80; }
+    .class-card .gold { font-size: .85rem; color: #fbbf24; margin-bottom: .5rem; }
+    .diff-easy { color: #4ade80; }
+    .diff-medium { color: #fbbf24; }
+    .diff-hard { color: #f87171; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div v-if="!session.id" class="class-select">
+    <h1>⚔️ The Grand Bazaar</h1>
+    <p style="color:#888;font-size:.9rem">The year is 1348. The marketplace stirs. Choose your path.</p>
+    <div class="class-cards">
+      <div class="class-card" @click="startSession('MERCHANT')">
+        <div class="icon">🧑‍💼</div>
+        <h3>The Merchant</h3>
+        <div class="difficulty diff-medium">★★☆ Intermediate</div>
+        <div class="gold">💰 500 starting gold</div>
+        <div class="perk">No trade fee on all transactions</div>
+      </div>
+      <div class="class-card" @click="startSession('MINER')">
+        <div class="icon">⛏️</div>
+        <h3>The Miner</h3>
+        <div class="difficulty diff-hard">★★★ Hard</div>
+        <div class="gold">💰 350 starting gold</div>
+        <div class="perk">+2% sell price on mining goods</div>
+      </div>
+      <div class="class-card" @click="startSession('NOBLE')">
+        <div class="icon">👑</div>
+        <h3>The Noble</h3>
+        <div class="difficulty diff-easy">★☆☆ Easy</div>
+        <div class="gold">💰 1,000 starting gold</div>
+        <div class="perk">Wealth is the only perk needed</div>
+      </div>
+    </div>
+  </div>
+
+  <template v-else>
+    <div v-if="reconnecting" class="reconnect-banner">⚠️ Connection lost — reconnecting…</div>
+    <div class="ticker">
+      <span v-for="(evt, i) in events.slice(0, 5)" :key="i">📯 {{ evt }}</span>
+      <span v-if="events.length === 0" style="color:#555">Awaiting market news…</span>
+    </div>
+    <div class="main">
+      <div class="market-panel">
+        <h2 class="section-title">Market — {{ goods.length }} goods</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Good</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th class="chart-cell">Trend</th>
+              <th>Qty</th>
+              <th>Trade</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="good in goods" :key="good.name">
+              <td>{{ good.name }}</td>
+              <td><span class="cat-badge">{{ good.category }}</span></td>
+              <td :class="priceClass(good.name)">{{ fmt(prices[good.name]) }}g {{ priceArrow(good.name) }}</td>
+              <td class="chart-cell"><canvas :ref="el => registerCanvas(good.name, el)" class="sparkline"></canvas></td>
+              <td><input type="number" v-model.number="quantities[good.name]" min="1" max="10" /></td>
+              <td style="display:flex;gap:6px">
+                <button style="background:#a78bfa;color:#0f0f1a" @click="trade('buy', good.name)">Buy</button>
+                <button style="background:#374151;color:#e2e2f0" @click="trade('sell', good.name)">Sell</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="side-panel">
+        <div class="portfolio">
+          <h2 class="section-title">{{ session.name }}</h2>
+          <div class="gold-display">{{ fmt(session.gold) }} gold</div>
+          <div v-for="(qty, name) in session.holdings" :key="name" class="holding-row">
+            <span>{{ name }} × {{ qty }}</span>
+            <span>{{ fmt((prices[name] || 0) * qty) }}g</span>
+          </div>
+          <div v-if="Object.keys(session.holdings).length === 0" style="color:#555;font-size:.8rem">No holdings</div>
+          <div class="net-worth">Net worth: <strong>{{ fmt(netWorth) }}g</strong></div>
+        </div>
+
+        <div class="scoreboard">
+          <h2 class="section-title">Scoreboard</h2>
+          <div v-for="(entry, i) in scoreboard" :key="entry.name"
+               :class="['sb-row', entry.name === session.name ? 'me' : '']">
+            <span class="sb-rank">#{{ i + 1 }}</span>
+            <span class="sb-name">{{ entry.name }}</span>
+            <span class="sb-worth">{{ fmt(entry.netWorth) }}g</span>
+            <span class="sb-trend" :class="trendClass(entry.trending)">
+              {{ trendIcon(entry.trending) }} {{ entry.trending !== 'NEUTRAL' ? fmt(Math.abs(entry.trend)) : '' }}
+            </span>
+          </div>
+          <div v-if="scoreboard.length === 0" style="color:#555;font-size:.8rem">Waiting for players…</div>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const session = reactive({ id: null, name: '', gold: 0, holdings: {} });
+    const prices = reactive({});
+    const prevPrices = reactive({});
+    const goods = ref([]);
+    const events = ref([]);
+    const scoreboard = ref([]);
+    const reconnecting = ref(false);
+    const quantities = reactive({});
+
+    const charts = {};
+    const canvasRefs = {};
+
+    const fmt = v => v == null ? '0.00' : Number(v).toFixed(2);
+
+    const netWorth = computed(() => {
+      let total = session.gold;
+      for (const [name, qty] of Object.entries(session.holdings)) {
+        total += (prices[name] || 0) * qty;
+      }
+      return total;
+    });
+
+    const priceClass = name => {
+      const curr = prices[name], prev = prevPrices[name];
+      if (prev == null) return 'price-neutral';
+      return curr > prev ? 'price-up' : curr < prev ? 'price-down' : 'price-neutral';
+    };
+
+    const priceArrow = name => {
+      const curr = prices[name], prev = prevPrices[name];
+      if (prev == null) return '→';
+      return curr > prev ? '↑' : curr < prev ? '↓' : '→';
+    };
+
+    const trendClass = t => t === 'UP' ? 'trending-up' : t === 'DOWN' ? 'trending-down' : '';
+    const trendIcon = t => t === 'UP' ? '▲' : t === 'DOWN' ? '▼' : '';
+
+    const registerCanvas = (name, el) => { if (el) canvasRefs[name] = el; };
+
+    const updateChart = (name, history) => {
+      if (!canvasRefs[name]) return;
+      const data = history.slice(-30);
+      if (charts[name]) {
+        charts[name].data.labels = data.map(() => '');
+        charts[name].data.datasets[0].data = data;
+        charts[name].update('none');
+        return;
+      }
+      const color = data[data.length - 1] > data[0] ? '#4ade80' : '#f87171';
+      charts[name] = new Chart(canvasRefs[name], {
+        type: 'line',
+        data: { labels: data.map(() => ''), datasets: [{ data, borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: false }] },
+        options: { animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } }, responsive: false }
+      });
+    };
+
+    const applyTick = (payload) => {
+      for (const [k, v] of Object.entries(prices)) prevPrices[k] = v;
+      for (const [k, v] of Object.entries(payload.prices)) prices[k] = v;
+      if (payload.history) {
+        nextTick(() => {
+          for (const [name, hist] of Object.entries(payload.history)) updateChart(name, hist);
+        });
+      }
+      if (payload.event) {
+        events.value.unshift(payload.event);
+        if (events.value.length > 20) events.value.pop();
+      }
+      if (payload.scoreboard) scoreboard.value = payload.scoreboard;
+    };
+
+    let stompClient = null;
+    let reconnectAttempts = 0;
+
+    const connect = () => {
+      stompClient = new StompJs.Client({
+        webSocketFactory: () => new SockJS('/ws'),
+        onConnect: () => {
+          reconnecting.value = false;
+          reconnectAttempts = 0;
+          stompClient.subscribe('/topic/market', msg => {
+            if (!reconnecting.value) applyTick(JSON.parse(msg.body));
+          });
+          fetch('/api/market/snapshot').then(r => r.json()).then(snap => {
+            for (const [k, v] of Object.entries(snap.prices)) prices[k] = v;
+            nextTick(() => {
+              if (snap.history) {
+                for (const [name, hist] of Object.entries(snap.history)) updateChart(name, hist);
+              }
+            });
+          });
+        },
+        onDisconnect: () => {
+          if (reconnectAttempts < 5) {
+            reconnecting.value = true;
+            reconnectAttempts++;
+            setTimeout(connect, 3000);
+          }
+        }
+      });
+      stompClient.activate();
+    };
+
+    const applySession = (data) => {
+      session.id = data.sessionId;
+      session.name = data.playerName;
+      session.gold = data.gold;
+      session.holdings = data.holdings || {};
+      localStorage.setItem('sessionId', data.sessionId);
+    };
+
+    const CATEGORIES = {
+      Agriculture: ['Grain','Wool','Livestock','Ale','Spices'],
+      Mining: ['Iron','Coal','Stone','Gems','Salt'],
+      'Timber & Craft': ['Timber','Rope','Cloth','Leather','Candles']
+    };
+    const getCategoryGuess = name => {
+      for (const [cat, list] of Object.entries(CATEGORIES)) {
+        if (list.includes(name)) return cat;
+      }
+      return 'Other';
+    };
+
+    const loadGoodsMeta = async () => {
+      const snap = await fetch('/api/market/snapshot').then(r => r.json());
+      goods.value = Object.keys(snap.prices).map(name => ({
+        name,
+        category: getCategoryGuess(name)
+      }));
+      goods.value.forEach(g => { if (!quantities[g.name]) quantities[g.name] = 1; });
+      for (const [k, v] of Object.entries(snap.prices)) prices[k] = v;
+    };
+
+    const startSession = async (playerClass) => {
+      const res = await fetch('/api/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerClass })
+      });
+      const data = await res.json();
+      applySession(data);
+      await loadGoodsMeta();
+      connect();
+    };
+
+    const trade = async (action, goodName) => {
+      const qty = quantities[goodName] || 1;
+      const res = await fetch(`/api/trade/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, good: goodName, quantity: qty })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        session.gold = data.gold;
+        session.holdings = data.holdings;
+        localStorage.setItem('portfolio', JSON.stringify({ gold: data.gold, holdings: data.holdings }));
+      } else {
+        alert(data.error || 'Trade failed');
+      }
+    };
+
+    onMounted(async () => {
+      const savedId = localStorage.getItem('sessionId');
+      if (savedId) {
+        const res = await fetch(`/api/session/${savedId}`);
+        if (res.ok) {
+          const data = await res.json();
+          applySession(data);
+          await loadGoodsMeta();
+          connect();
+        }
+      }
+    });
+
+    return {
+      session, prices, goods, events, scoreboard, reconnecting, quantities, netWorth,
+      fmt, priceClass, priceArrow, trendClass, trendIcon,
+      startSession, trade, registerCanvas
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
