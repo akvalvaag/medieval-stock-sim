@@ -38,7 +38,11 @@ public class BlackMarketController {
         Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
         String goodName = (String) body.get("goodName");
-        int qty = ((Number) body.get("quantity")).intValue();
+        Object qtyObj = body.get("quantity");
+        if (goodName == null || qtyObj == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing goodName or quantity"));
+        }
+        int qty = ((Number) qtyObj).intValue();
         try {
             blackMarketService.buy(opt.get(), goodName, qty);
             Portfolio p = opt.get();

@@ -97,4 +97,42 @@ class BlackMarketServiceTest {
         }
         assertThat(confiscations).isEqualTo(0);
     }
+
+    @Test
+    void buy_failsWhenInsufficientQuantity() {
+        Portfolio p = merchant();
+        p.setBlackMarketOffers(new java.util.ArrayList<>(List.of(new BlackMarketOffer("Iron", 2, 20.0))));
+        assertThatThrownBy(() -> service.buy(p, "Iron", 5))
+            .isInstanceOf(BlackMarketService.BlackMarketException.class)
+            .hasMessageContaining("quantity");
+    }
+
+    @Test
+    void buy_failsWhenNoOffersActive() {
+        Portfolio p = merchant();
+        // No offers set (null)
+        assertThatThrownBy(() -> service.buy(p, "Iron", 1))
+            .isInstanceOf(BlackMarketService.BlackMarketException.class)
+            .hasMessageContaining("No black market");
+    }
+
+    @Test
+    void buy_exhaustsOfferWhenFullyPurchased() {
+        Portfolio p = merchant();
+        BlackMarketOffer offer = new BlackMarketOffer("Iron", 3, 20.0);
+        p.setBlackMarketOffers(new java.util.ArrayList<>(List.of(offer)));
+        service.buy(p, "Iron", 3);
+        // Offer fully consumed — offers list should be null or empty
+        assertThat(p.getBlackMarketOffers()).isNull();
+    }
+
+    @Test
+    void buy_reducesOfferQtyOnPartialPurchase() {
+        Portfolio p = merchant();
+        BlackMarketOffer offer = new BlackMarketOffer("Iron", 5, 20.0);
+        p.setBlackMarketOffers(new java.util.ArrayList<>(List.of(offer)));
+        service.buy(p, "Iron", 2);
+        assertThat(p.getBlackMarketOffers()).hasSize(1);
+        assertThat(p.getBlackMarketOffers().get(0).availableQty()).isEqualTo(3);
+    }
 }

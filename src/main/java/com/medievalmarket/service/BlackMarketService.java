@@ -12,16 +12,12 @@ public class BlackMarketService {
         public BlackMarketException(String msg) { super(msg); }
     }
 
-    private static final List<String> MARKET_GOODS = List.of(
-        "Grain","Wool","Iron","Coal","Gems","Salt","Silver","Copper",
-        "Timber","Cloth","Leather","Spices","Herbs","Honey","Ale","Fish",
-        "Bread","Weapons","Wine","Soap","Elixir"
-    );
-
     private final GoodsCatalogue catalogue;
+    private final List<String> marketGoods;
 
     public BlackMarketService(GoodsCatalogue catalogue) {
         this.catalogue = catalogue;
+        this.marketGoods = catalogue.getGoods().stream().map(g -> g.getName()).toList();
     }
 
     /** Returns a confiscation flash message, or null if no confiscation. */
@@ -29,18 +25,21 @@ public class BlackMarketService {
         // Decrement existing panel lifetime
         if (p.getBlackMarketOffers() != null) {
             p.setBlackMarketTicksRemaining(p.getBlackMarketTicksRemaining() - 1);
-            if (p.getBlackMarketTicksRemaining() <= 0 || p.getBlackMarketOffers().isEmpty()) {
+            if (p.getBlackMarketTicksRemaining() <= 0) {
                 p.setBlackMarketOffers(null);
+                p.setBlackMarketTicksSinceLastRoll(0); // reset counter when panel closes
             }
         }
 
-        // Roll for appearance every 30 ticks
-        p.setBlackMarketTicksSinceLastRoll(p.getBlackMarketTicksSinceLastRoll() + 1);
-        if (p.getBlackMarketTicksSinceLastRoll() >= 30 && p.getBlackMarketOffers() == null) {
-            p.setBlackMarketTicksSinceLastRoll(0);
-            if (ThreadLocalRandom.current().nextDouble() < 0.15) {
-                p.setBlackMarketOffers(generateOffers());
-                p.setBlackMarketTicksRemaining(10);
+        // Only count ticks and roll when no offers active
+        if (p.getBlackMarketOffers() == null) {
+            p.setBlackMarketTicksSinceLastRoll(p.getBlackMarketTicksSinceLastRoll() + 1);
+            if (p.getBlackMarketTicksSinceLastRoll() >= 30) {
+                p.setBlackMarketTicksSinceLastRoll(0);
+                if (ThreadLocalRandom.current().nextDouble() < 0.15) {
+                    p.setBlackMarketOffers(generateOffers());
+                    p.setBlackMarketTicksRemaining(10);
+                }
             }
         }
 
@@ -61,9 +60,9 @@ public class BlackMarketService {
             .filter(o -> o.goodName().equals(goodName))
             .findFirst()
             .orElseThrow(() -> new BlackMarketException("No offer for: " + goodName));
+        if (offer.availableQty() < qty) throw new BlackMarketException("Insufficient quantity available");
         double total = offer.discountedPrice() * qty;
         if (p.getGold() < total) throw new BlackMarketException("Insufficient funds");
-        if (offer.availableQty() < qty) throw new BlackMarketException("Insufficient quantity available");
         p.setGold(p.getGold() - total);
         p.addContrabandHolding(goodName, qty);
         // Replace offer with reduced qty or remove if fully purchased
@@ -77,7 +76,7 @@ public class BlackMarketService {
     private List<BlackMarketOffer> generateOffers() {
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         int count = 1 + rng.nextInt(3); // 1-3 offers
-        List<String> shuffled = new ArrayList<>(MARKET_GOODS);
+        List<String> shuffled = new ArrayList<>(marketGoods);
         Collections.shuffle(shuffled);
         List<BlackMarketOffer> offers = new ArrayList<>();
         for (int i = 0; i < count; i++) {
