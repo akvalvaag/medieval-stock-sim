@@ -44,7 +44,34 @@ public class EventEngine {
             Map.of("Soap",      new double[]{-0.30, -0.20},
                    "Cloth",     new double[]{-0.25, -0.15},
                    "Dye",       new double[]{-0.25, -0.15},
-                   "Parchment", new double[]{-0.25, -0.15}))
+                   "Parchment", new double[]{-0.25, -0.15})),
+        new EventDef("drought", "Drought strikes! Crops wither across the kingdom.",
+            Map.of("Grain",     new double[]{0.25, 0.40},
+                   "Livestock", new double[]{0.25, 0.40},
+                   "Ale",       new double[]{0.20, 0.30},
+                   "Honey",     new double[]{0.15, 0.25})),
+        new EventDef("fire", "Great fire tears through the timber district!",
+            Map.of("Timber", new double[]{0.30, 0.45},
+                   "Rope",   new double[]{0.25, 0.35},
+                   "Pitch",  new double[]{0.30, 0.45},
+                   "Wax",    new double[]{0.20, 0.30})),
+        new EventDef("silver_vein", "Massive silver lode discovered near the capital!",
+            Map.of("Silver", new double[]{-0.35, -0.20},
+                   "Copper", new double[]{-0.25, -0.15})),
+        new EventDef("guild_strike", "Craftsmen's guilds down tools across the city!",
+            Map.of("Cloth",   new double[]{0.25, 0.35},
+                   "Leather", new double[]{0.25, 0.35},
+                   "Weapons", new double[]{0.20, 0.30},
+                   "Soap",    new double[]{0.15, 0.25})),
+        new EventDef("salt_shortage", "Salt caravans seized at the border!",
+            Map.of("Salt",    new double[]{0.30, 0.45},
+                   "Fish",    new double[]{0.20, 0.30},
+                   "Leather", new double[]{0.15, 0.25})),
+        new EventDef("alchemist", "Royal Alchemist announces miraculous cure!",
+            Map.of("Elixir", new double[]{0.35, 0.50},
+                   "Herbs",  new double[]{0.25, 0.35},
+                   "Honey",  new double[]{0.20, 0.30},
+                   "Wax",    new double[]{0.15, 0.20}))
     );
 
     private static final List<String> ALL_GOODS = List.of(
@@ -55,10 +82,21 @@ public class EventEngine {
     );
     private static final Set<String> PLAGUE_PRIMARY = Set.of("Livestock", "Grain", "Fish", "Elixir");
 
-    public FiredEvent maybeFireEvent() {
+    public FiredEvent maybeFireEvent(Set<String> boostedKeys) {
         if (ThreadLocalRandom.current().nextDouble() > 0.04) return null;
         if (ThreadLocalRandom.current().nextInt(7) == 0) return buildPlagueEvent();
-        EventDef def = EVENTS.get(ThreadLocalRandom.current().nextInt(EVENTS.size()));
+
+        List<EventDef> candidates = new ArrayList<>();
+        for (EventDef def : EVENTS) {
+            candidates.add(def);
+            if (boostedKeys.contains(def.key())) {
+                candidates.add(def);
+                candidates.add(def);
+                candidates.add(def);
+            }
+        }
+
+        EventDef def = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
         Map<String, Double> modifiers = new HashMap<>();
         def.goodRanges().forEach((good, range) -> {
             double min = range[0], max = range[1];

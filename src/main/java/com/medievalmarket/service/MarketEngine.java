@@ -71,7 +71,7 @@ public class MarketEngine {
             Map<String, Double> seasonMods = seasonEngine.getModifiers();
 
             // 2. Maybe fire an event
-            EventEngine.FiredEvent event = eventEngine.maybeFireEvent();
+            EventEngine.FiredEvent event = eventEngine.maybeFireEvent(java.util.Set.of());
             Map<String, Double> eventModifiers = event != null ? event.modifiers() : Map.of();
 
             // 3. Reprice all goods (event modifier + season nudge)
