@@ -65,7 +65,7 @@ class ContractServiceTest {
         service.accept(p);
         assertThatThrownBy(() -> service.deliver(p))
             .isInstanceOf(ContractService.ContractException.class)
-            .hasMessageContaining("requirements");
+            .hasMessageContaining("Requirements");
     }
 
     @Test

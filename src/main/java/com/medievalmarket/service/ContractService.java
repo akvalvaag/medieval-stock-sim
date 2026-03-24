@@ -86,7 +86,7 @@ public class ContractService {
         if (c == null) throw new ContractException("No active contract");
         for (Map.Entry<String, Integer> e : c.getRequirements().entrySet()) {
             if (p.getHolding(e.getKey()) < e.getValue())
-                throw new ContractException("requirements not met");
+                throw new ContractException("Requirements not met");
         }
         c.getRequirements().forEach((good, qty) ->
             p.setHolding(good, p.getHolding(good) - qty));

@@ -1,5 +1,6 @@
 package com.medievalmarket.model;
 
+import java.util.Collections;
 import java.util.Map;
 
 public class Contract {
@@ -26,7 +27,7 @@ public class Contract {
 
     public String getPatronName() { return patronName; }
     public String getFlavourText() { return flavourText; }
-    public Map<String, Integer> getRequirements() { return requirements; }
+    public Map<String, Integer> getRequirements() { return Collections.unmodifiableMap(requirements); }
     /** Returns the original deadline tick count (immutable). For live countdown use {@link #getTicksLeft()}. */
     public int getTicksRemaining() { return ticksRemaining; }
     /** Returns the live countdown — decremented each tick. */

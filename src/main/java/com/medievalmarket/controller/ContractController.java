@@ -62,8 +62,9 @@ public class ContractController {
         Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
         try {
-            contractService.deliver(opt.get());
-            return ResponseEntity.ok(Map.of("gold", opt.get().getGold()));
+            Portfolio p = opt.get();
+            contractService.deliver(p);
+            return ResponseEntity.ok(Map.of("gold", p.getGold()));
         } catch (ContractService.ContractException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
