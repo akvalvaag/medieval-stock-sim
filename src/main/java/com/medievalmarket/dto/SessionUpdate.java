@@ -24,6 +24,11 @@ public class SessionUpdate {
     // Facility fields
     private List<FacilityType> facilities;
 
+    // Holdings and production fields
+    private Map<String, Integer> holdings;
+    private Map<String, Double>  costBasis;
+    private int ticksUntilProduction;
+
     // Contract fields
     private Contract activeContract;
     private Contract pendingContractOffer;
@@ -49,6 +54,9 @@ public class SessionUpdate {
     public ExoticImportOffer getExoticImportOffer() { return exoticImportOffer; }
     public int getFenceCooldown() { return fenceCooldown; }
     public List<FacilityType> getFacilities() { return facilities; }
+    public Map<String, Integer> getHoldings()       { return holdings; }
+    public Map<String, Double>  getCostBasis()       { return costBasis; }
+    public int getTicksUntilProduction()             { return ticksUntilProduction; }
     public Contract getActiveContract() { return activeContract; }
     public Contract getPendingContractOffer() { return pendingContractOffer; }
     public List<RumourDTO> getRumours() { return rumours; }
@@ -69,6 +77,9 @@ public class SessionUpdate {
         public Builder exoticImportOffer(ExoticImportOffer v) { su.exoticImportOffer = v; return this; }
         public Builder fenceCooldown(int v) { su.fenceCooldown = v; return this; }
         public Builder facilities(List<FacilityType> v) { su.facilities = v; return this; }
+        public Builder holdings(Map<String, Integer> v)  { su.holdings = v; return this; }
+        public Builder costBasis(Map<String, Double> v)  { su.costBasis = v; return this; }
+        public Builder ticksUntilProduction(int v)       { su.ticksUntilProduction = v; return this; }
         public Builder activeContract(Contract v) { su.activeContract = v; return this; }
         public Builder pendingContractOffer(Contract v) { su.pendingContractOffer = v; return this; }
         public Builder rumours(List<RumourDTO> v) { su.rumours = v; return this; }
