@@ -967,7 +967,14 @@ createApp({
       await fetch('/api/contract/deliver', { method: 'POST', headers: { 'X-Session-Id': session.id } });
     };
     const tipRumour = async (id) => {
-      await fetch(`/api/rumours/${id}/tip`, { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      const res = await fetch(`/api/rumours/${id}/tip`, { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      if (res.ok) {
+        const data = await res.json();
+        // Apply result immediately without waiting for next WebSocket tick
+        const r = rumours.value.find(r => r.id === id);
+        if (r) r.tipResult = data.tipResult;
+        gold.value = data.gold;
+      }
     };
     const buyContraband = async (goodName, qty) => {
       await fetch('/api/blackmarket/buy', {

@@ -23,22 +23,29 @@ class RumourServiceTest {
     @Test
     void processTick_fillsUpTo3RumourSlots() {
         Portfolio p = merchant();
-        // Run enough ticks to trigger generation (every ~20)
-        for (int i = 0; i < 20; i++) service.processTick(p);
-        assertThat(p.getRumours().size()).isLessThanOrEqualTo(3);
-        assertThat(p.getRumours().size()).isGreaterThan(0);
+        // One rumour added per 10 ticks; run 30 ticks to fill all 3 slots
+        for (int i = 0; i < 30; i++) service.processTick(p);
+        assertThat(p.getRumours().size()).isEqualTo(3);
+    }
+
+    @Test
+    void processTick_addsSingleRumourPer10Ticks() {
+        Portfolio p = merchant();
+        for (int i = 0; i < 10; i++) service.processTick(p);
+        assertThat(p.getRumours().size()).isEqualTo(1);
+        for (int i = 0; i < 10; i++) service.processTick(p);
+        assertThat(p.getRumours().size()).isEqualTo(2);
     }
 
     @Test
     void processTick_expiresRumoursAfter30Ticks() {
         Portfolio p = merchant();
-        // Force generation by calling processTick 20 times
-        for (int i = 0; i < 20; i++) service.processTick(p);
-        int count = p.getRumours().size();
-        assertThat(count).isGreaterThan(0);
-        // Run 30 more ticks — original rumours should expire
+        // Fill a slot at tick 10; the rumour has ticksRemaining=30
+        for (int i = 0; i < 10; i++) service.processTick(p);
+        assertThat(p.getRumours().size()).isGreaterThan(0);
+        // Run 31 more ticks to expire it
         for (int i = 0; i < 31; i++) service.processTick(p);
-        // Expired rumours removed (new ones may have replaced them)
+        // All surviving rumours must still have time remaining
         p.getRumours().forEach(r -> assertThat(r.getTicksRemaining()).isGreaterThan(0));
     }
 

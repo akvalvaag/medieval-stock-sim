@@ -48,24 +48,26 @@ public class RumourService {
     private void tickPortfolio(Portfolio p, int t) {
         p.getRumours().forEach(Rumour::decrementTick);
         p.removeExpiredRumours();
-        if (t % 20 == 0) {
-            fillRumours(p);
+        // Add at most one rumour every 10 ticks when below the 3-slot cap,
+        // so rumours trickle in one at a time rather than all arriving together.
+        if (t % 10 == 0 && p.getRumours().size() < 3) {
+            addOneRumour(p);
         }
     }
 
-    private void fillRumours(Portfolio p) {
+    private void addOneRumour(Portfolio p) {
         List<Rumour> current = p.getRumours();
         double truthRate = (p.getGuild() == Guild.SCHOLARS_GUILD) ? 0.78 : 0.60;
         Set<String> usedKeys = new HashSet<>();
         current.forEach(r -> usedKeys.add(r.getEventKey()));
-        while (current.size() < 3) {
+        // Pick a key not already shown; give up after a few tries to avoid an infinite loop
+        // when all keys are in use (edge case — there are 9 keys and max 3 slots).
+        for (int attempts = 0; attempts < 20; attempts++) {
             String key = EVENT_KEYS.get(ThreadLocalRandom.current().nextInt(EVENT_KEYS.size()));
             if (usedKeys.contains(key)) continue;
-            usedKeys.add(key);
             boolean isTrue = ThreadLocalRandom.current().nextDouble() < truthRate;
-            Rumour r = new Rumour(UUID.randomUUID().toString(), EVENT_RUMOURS.get(key), key, isTrue, 30);
-            p.addRumour(r);
-            current = p.getRumours(); // refresh reference after defensive copy
+            p.addRumour(new Rumour(UUID.randomUUID().toString(), EVENT_RUMOURS.get(key), key, isTrue, 30));
+            return;
         }
     }
 
