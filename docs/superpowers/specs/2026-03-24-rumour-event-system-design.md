@@ -2,14 +2,16 @@
 
 ## Goal
 
-Rumours influence global event probability, fire less frequently, are removed when their event fires, and the catalogue of events/rumours is expanded.
+Rumours are global (all players see the same rumours), influence global event probability, fire less frequently, are removed when their event fires, and the catalogue of events/rumours is expanded. Tipping is per-player — each player independently pays to get their own private RELIABLE/DUBIOUS verdict.
 
 ## Scope
 
 - `EventEngine.java` — new events, weighted selection
-- `RumourService.java` — frequency, removal on fire, new rumour texts, expanded EVENT_KEYS
-- `Portfolio.java` — add `removeRumoursByEventKey(String key)`
-- `MarketEngine.java` — collect boosted keys, pass to EventEngine
+- `RumourService.java` — global rumour list, frequency, removal on fire, drop `processAll`, new rumour texts, expanded EVENT_KEYS
+- `Rumour.java` — remove `tipResult`, `setTipResult()`, `getTipResult()`, `confirmed`, `isConfirmed()`, `setConfirmed()` fields/methods; retain `isTrue`, `id`, `text`, `eventKey`, `ticksRemaining`
+- `Portfolio.java` — remove `List<Rumour> rumours`, `addRumour()`, `getRumours()`, `removeExpiredRumours()`, dead `import Rumour`; add `Map<String, String> tipResults` with synchronized accessors
+- `MarketEngine.java` — simplified boosted-key collection, pass to EventEngine
+- `SessionUpdate.java` / `RumourDTO` — remove `confirmed` field, add per-player `tipResult`
 - `EventEngineTest.java`, `RumourServiceTest.java` — updated tests
 
 ---
@@ -26,7 +28,7 @@ Build a candidate list by adding every `EventDef` once. For each event whose key
 - One event boosted: boosted event has 4/17 ≈ 23.5% share; others share 1/17 each
 - Two events boosted: each boosted event has 4/20 = 20% share; others share 1/20 each
 
-**Plague is excluded from boosting.** Plague is handled by a separate branch before the EVENTS list is consulted (`if (ThreadLocalRandom.current().nextInt(7) == 0) return buildPlagueEvent()`). The "plague" key will appear in `boostedKeys` if a player holds a true plague rumour, but `EventEngine` simply ignores unknown keys in `boostedKeys` — plague's 1-in-7 branch is unaffected.
+**Plague is excluded from boosting.** Plague is handled by a separate branch before the EVENTS list is consulted (`if (ThreadLocalRandom.current().nextInt(7) == 0) return buildPlagueEvent()`). The "plague" key will appear in `boostedKeys` if a true plague rumour is active, but `EventEngine` simply ignores unknown keys in `boostedKeys` — plague's 1-in-7 branch is unaffected.
 
 **New signature:**
 ```java
@@ -52,20 +54,72 @@ After adding these, the EVENTS list contains **14 entries** (8 existing + 6 new)
 
 ---
 
-## 3. Rumour Service Changes
+## 3. Global Rumour Model
+
+### Rumours are now global, not per-player
+
+`RumourService` owns a single `List<Rumour> activeRumours` (max 3 slots). All players see the same rumours. `Portfolio` no longer stores a rumour list.
+
+**`RumourService` state:**
+```java
+private final List<Rumour> activeRumours = new ArrayList<>();
+private int tickCount = 0;
+```
+
+**`processAll(Collection<Portfolio>)` is deleted.** The single method is now `processTick()` (no arguments), called once per market tick by `MarketEngine`. Tests continue to call `processTick()` directly.
+
+**`processTick()` logic:**
+- Increment `tickCount`
+- Decrement `ticksRemaining` on all active rumours
+- Remove expired rumours (ticksRemaining ≤ 0)
+- If `tickCount % 20 == 0` and `activeRumours.size() < 3`, add one new rumour (avoiding duplicate event keys already in the list — `usedKeys` check)
+
+**`onEventFired(String eventKey)`** — signature change: no longer takes a portfolio collection (behavioural change from "mark confirmed" to "remove from global list"). Removes any rumour whose `eventKey` matches from `activeRumours`.
+
+**`getRumours()`** — returns `Collections.unmodifiableList(activeRumours)` for MarketEngine and controllers to read.
+
+### Rumour model changes
+
+`Rumour.java` retains: `id`, `text`, `eventKey`, `isTrue`, `ticksRemaining`, `decrementTick()`.
+
+`Rumour.java` removes: `tipResult`, `setTipResult()`, `getTipResult()`, `confirmed`, `isConfirmed()`, `setConfirmed()`. These fields were per-player concepts that no longer belong on the shared object.
+
+### Tipping remains per-player
+
+**`Portfolio` changes:**
+- Remove: `List<Rumour> rumours`, `addRumour()`, `getRumours()`, `removeExpiredRumours()`, dead `import com.medievalmarket.model.Rumour`
+- Add:
+  ```java
+  private final Map<String, String> tipResults = new HashMap<>();
+
+  public synchronized String getTipResult(String rumourId) {
+      return tipResults.get(rumourId);
+  }
+  public synchronized void setTipResult(String rumourId, String result) {
+      tipResults.put(rumourId, result);
+  }
+  public synchronized void removeTipResultsNotIn(Set<String> activeIds) {
+      tipResults.keySet().retainAll(activeIds);
+  }
+  public synchronized Map<String, String> getTipResults() {
+      return new HashMap<>(tipResults);
+  }
+  ```
+
+**`tip(Portfolio p, String rumourId)` in `RumourService`:**
+- Looks up rumour by id in `activeRumours` — throws `RumourException("Rumour not found")` if absent
+- Checks `p.getTipResult(rumourId) == null` — throws `RumourException("already tipped this rumour")` if already tipped
+- Checks `p.getGold() >= cost` — throws `RumourException("Insufficient funds")` if insufficient
+- Deducts gold (10g standard, 5g for Scholars' Guild)
+- Rolls verdict (70% chance verdict matches `rumour.isTrue()`) and calls `p.setTipResult(rumourId, verdict)`
+- Returns verdict string (`"RELIABLE"` or `"DUBIOUS"`)
 
 ### Frequency
-Change from every **10 ticks** to every **20 ticks**. First rumour appears at tick 20, second at 40, third at 60. Cap of 3 slots unchanged.
+One new rumour every **20 ticks** (was 10). First appears at tick 20, second at 40, third at 60.
 
-The existing tip-cost tests call `processTick` 20 times — these remain valid because tick 20 is exactly when the first rumour appears, and those tests are guarded by `assumeThat(p.getRumours()).isNotEmpty()`.
+---
 
-### Removal on Event Fire
-`onEventFired(String eventKey, Collection<Portfolio> portfolios)` currently marks matching rumours `confirmed=true`. Change to call `p.removeRumoursByEventKey(eventKey)` for each portfolio instead. This frees the slot and signals to the player the rumour played out.
-
-The `confirmed` boolean field on `Rumour` and its setter become dead code after this change. Leave them in place for now (removing would be a separate refactor with no gameplay benefit).
-
-### EVENT_RUMOURS and EVENT_KEYS — both must be extended
-`RumourService` has two separate data structures that both need the 6 new keys:
+## 4. EVENT_RUMOURS and EVENT_KEYS — both must be extended
 
 **`EVENT_RUMOURS`** (hint texts — **must migrate from `Map.of()` to `Map.ofEntries(Map.entry(…), …)`** since 15 entries exceed `Map.of()`'s 10-pair limit):
 ```
@@ -77,35 +131,19 @@ The `confirmed` boolean field on `Rumour` and its setter become dead code after 
 "alchemist"     → "The palace physician has been requesting unusual quantities of rare herbs..."
 ```
 
-**`EVENT_KEYS`** (selection pool — currently 9 entries):
-Add all 6 new keys. New list: `"war", "harvest", "spice", "iron_vein", "gems", "wool", "banquet", "embargo", "plague", "drought", "fire", "silver_vein", "guild_strike", "salt_shortage", "alchemist"` (15 entries).
-
-### Duplicate Avoidance
-Already implemented (checks `usedKeys` against currently-held rumour event keys). No change needed.
-
----
-
-## 4. Portfolio — New Method
-
-Add to `Portfolio.java`:
-
-```java
-public synchronized void removeRumoursByEventKey(String eventKey) {
-    rumours.removeIf(r -> r.getEventKey().equals(eventKey));
-}
-```
-
-This modifies the internal list directly (not a defensive copy), so removal is reliable.
+**`EVENT_KEYS`** (selection pool — currently 9 entries, must grow to 15):
+`"war", "harvest", "spice", "iron_vein", "gems", "wool", "banquet", "embargo", "plague", "drought", "fire", "silver_vein", "guild_strike", "salt_shortage", "alchemist"`
 
 ---
 
 ## 5. MarketEngine Wiring
 
-Before calling `eventEngine.maybeFireEvent()`, collect the set of event keys that have at least one `isTrue=true` rumour across all human portfolios:
+Replace `rumourService.processAll(humans)` with `rumourService.processTick()` (once per tick, no arguments).
+
+Boosted keys come directly from the global rumour list — no portfolio scanning needed:
 
 ```java
-Set<String> boostedKeys = humans.stream()
-    .flatMap(p -> p.getRumours().stream())
+Set<String> boostedKeys = rumourService.getRumours().stream()
     .filter(Rumour::isTrue)
     .map(Rumour::getEventKey)
     .collect(Collectors.toSet());
@@ -113,20 +151,48 @@ Set<String> boostedKeys = humans.stream()
 FiredEvent event = eventEngine.maybeFireEvent(boostedKeys);
 ```
 
+Clean up stale tip entries after ticking rumours:
+```java
+rumourService.processTick();   // advances tick, expires/adds rumours
+
+Set<String> activeIds = rumourService.getRumours().stream()
+    .map(Rumour::getId)
+    .collect(Collectors.toSet());
+humans.forEach(p -> p.removeTipResultsNotIn(activeIds));
+```
+
+`onEventFired` call simplifies to:
+```java
+if (firedEventKey != null) {
+    rumourService.onEventFired(firedEventKey);
+}
+```
+
 ---
 
-## 6. Testing
+## 6. SessionUpdate / Frontend
+
+The `SessionUpdate` payload currently includes `List<RumourDTO>` built per-portfolio. With global rumours:
+- The rumour list is the same for all players — built once from `rumourService.getRumours()`
+- Each `RumourDTO` includes: `id`, `text`, `eventKey`, `ticksRemaining` (no `isTrue` — client must not know), `tipResult` (populated per-player from `p.getTipResult(r.getId())`, null if not tipped)
+- `confirmed` field is removed from `RumourDTO`
+
+Frontend rumour panel behaviour is unchanged: shows text, ticksRemaining, tip button (disabled if `tipResult != null`), and tipResult label when present.
+
+---
+
+## 7. Testing
 
 ### EventEngineTest
 - Update all `maybeFireEvent()` calls to pass `Set.of()` (no boost)
 - Update upper-bound modifier assertion from `<= 0.45` to `<= 0.50` (due to `alchemist` Elixir at 50%)
-- Add: statistical boost test — extract the selection logic into a testable helper, or call `maybeFireEvent(boostedKeys)` in a tight loop until 200 non-null results are collected (bypassing the 4% gate). With one key boosted among 14 events, assert that key appears in at least 40 of the 200 results (vs the expected ~14 without boosting). Use `double` arithmetic: `200.0 / 14 * 1.5 ≈ 21`, so a threshold of 40 is safely above baseline noise.
+- Add statistical boost test: call `maybeFireEvent(Set.of("war"))` in a loop, collecting results until 200 non-null events are produced (discard nulls from the 4% gate). Assert `"war"` appears in at least **30** of the 200 results (theoretical expectation ~47; threshold of 30 is ~2.8σ below mean giving <0.3% false-failure rate).
 
 ### RumourServiceTest
-- Update tick counts for new 20-tick frequency:
-  - Fill 3 slots: 60 ticks (was 30)
-  - Single rumour at tick 20 (was 10); two rumours at tick 40 (was 20)
-  - Expiry test: add rumour at tick 20, run 31 more ticks to expire
-- `onEventFired` positive case: assert rumour **is removed** (list size decreases), not confirmed
-- `onEventFired` negative case: assert non-matching rumour is **not removed** (list size unchanged)
-- Remove the old `onEventFired_marksMatchingRumoursAsConfirmed` and `onEventFired_doesNotMarkNonMatchingRumours` tests; replace with removal-semantics equivalents
+- `processTick()` takes no arguments
+- Fill 3 slots: 60 ticks (was 30)
+- Single rumour at tick 20 (was 10); two at tick 40 (was 20)
+- `tip` tests: verify `p.getTipResult(id)` is set and gold is deducted; verify `"already tipped this rumour"` exception on second tip
+- `onEventFired(eventKey)` positive case: assert matching rumour is removed from the service's active list (`getRumours().size()` decreases)
+- `onEventFired(eventKey)` negative case: assert non-matching rumour is NOT removed
+- Remove old `onEventFired_marksMatchingRumoursAsConfirmed` and `onEventFired_doesNotMarkNonMatchingRumours`
