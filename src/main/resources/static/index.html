@@ -158,6 +158,41 @@
     .dim { color:#888; font-size:.72rem; }
     /* Net worth chart */
     .nw-chart-wrap { margin-top:.4rem; }
+    /* Expansion panels */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal-panel { max-width: 400px; width: 90%; }
+    .guild-badge { background: #7c3aed; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px; }
+    .panel { background:#1e1e2e; border:1px solid #2a2a4e; border-radius:8px; padding:.8rem 1rem; margin:.5rem 1rem; }
+    .panel h3 { color:#a78bfa; font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.5rem; }
+    .panel h4 { color:#a78bfa; font-size:.75rem; margin-bottom:.4rem; }
+    .panel-exotic { border-color: #0ea5e9; background: #0c1a25; }
+    .panel-warning { border-color: #d97706; background: #1c1200; }
+    .rumour-card { border: 1px solid #374151; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+    .reliable { color: #22c55e; font-weight: bold; }
+    .dubious { color: #ef4444; font-weight: bold; }
+    .met { color: #22c55e; }
+    .short { color: #ef4444; }
+    .urgent { color: #ef4444; font-weight: bold; }
+    .warning { color: #f59e0b; }
+    .contraband-section { margin-top: 12px; border-top: 1px solid #d97706; padding-top: 8px; }
+    .contraband-row { color: #fbbf24; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-primary { background: #4c1d95; color: #ddd6fe; border-radius: 5px; padding: 5px 11px; font-size: .82rem; }
+    .btn-primary:hover:not(:disabled) { background: #6d28d9; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: #1f2937; color: #e2e2f0; border-radius: 5px; padding: 5px 11px; font-size: .82rem; }
+    .btn-secondary:hover:not(:disabled) { background: #374151; }
+    .btn-sm { background: #1e1e30; color: #a78bfa; border: 1px solid #a78bfa44; border-radius: 4px; padding: 4px 10px; font-size: .76rem; cursor: pointer; }
+    .btn-sm:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-xs { padding: 2px 6px; font-size: .7rem; border-radius: 4px; }
+    .btn-row { display: flex; gap: .5rem; margin-top: .6rem; }
+    .muted { color: #555; font-size: .8rem; }
+    .flavour { font-style: italic; color: #9ca3af; font-size: 0.875rem; }
+    .facility-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .recipe { font-size: 0.75rem; color: #6b7280; }
+    .bm-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .contract-offer ul, .contract-active ul { padding-left: 1.2rem; font-size: .82rem; margin: .4rem 0; }
+    .facility-build-list { margin-top: .4rem; }
   </style>
 </head>
 <body>
@@ -260,6 +295,9 @@
                   <button class="btn-sell"
                           :disabled="(session.holdings[good.name] || 0) < 1"
                           @click="trade('sell', good.name, session.holdings[good.name] || 0)">All</button>
+                  <button v-if="guild && guild.name === 'THIEVES_GUILD' && fenceCooldown === 0 && getHolding(good.name) > 0"
+                    class="btn-sell btn-xs btn-warning"
+                    @click="fenceSell(good.name, getHolding(good.name))">Fence</button>
                 </div>
               </td>
 
@@ -300,7 +338,7 @@
       <!-- SIDE PANEL -->
       <div class="side-panel">
         <div class="portfolio">
-          <h2 class="section-title">{{ session.name }} <span style="color:#888;font-weight:400;text-transform:none;font-size:.7rem">({{ session.playerClass }})</span></h2>
+          <h2 class="section-title">{{ session.name }} <span style="color:#888;font-weight:400;text-transform:none;font-size:.7rem">({{ session.playerClass }})</span><span v-if="guild" class="guild-badge">{{ guild.displayName }}</span></h2>
           <div class="gold-display">{{ fmt(session.gold) }} gold</div>
 
           <!-- Holdings with P&L -->
@@ -323,6 +361,13 @@
           <!-- Net worth chart -->
           <div class="nw-chart-wrap" v-if="netWorthHistory.length > 1">
             <canvas id="nw-chart" width="160" height="32"></canvas>
+          </div>
+          <!-- Contraband holdings -->
+          <div v-if="Object.keys(contrabandHoldings).length > 0" class="contraband-section">
+            <h4>Contraband ⚠️</h4>
+            <div v-for="(qty, good) in contrabandHoldings" :key="good" class="contraband-row">
+              {{ good }}: {{ qty }}
+            </div>
           </div>
         </div>
 
@@ -386,6 +431,92 @@
           </div>
         </div>
 
+        <!-- Exotic Import Panel -->
+        <div v-if="guild && guild.name === 'SEA_TRADERS' && exoticImportOffer" class="panel panel-exotic">
+          <h4>🚢 Exotic Import Available!</h4>
+          <p>{{ exoticImportOffer.goodName }} — {{ exoticImportOffer.discountedPrice.toFixed(1) }}g</p>
+          <button class="btn btn-primary" @click="buyExoticImport">Buy</button>
+        </div>
+
+        <!-- Facilities Panel -->
+        <div class="panel">
+          <h3>🏭 Facilities</h3>
+          <p v-if="facilities.length === 0" class="muted">No facilities built.</p>
+          <div v-else>
+            <span v-for="(count, type) in facilityCounts" :key="type">{{ type }} ×{{ count }} </span>
+            — {{ facilities.length }}/15
+          </div>
+          <div class="facility-build-list">
+            <div v-for="ft in facilityTypes" :key="ft.type" class="facility-row">
+              <span>{{ ft.label }} — {{ ft.cost }}g</span>
+              <span class="recipe">{{ ft.recipe }}</span>
+              <button class="btn btn-sm" @click="buildFacility(ft.type)"
+                :disabled="session.gold < ft.cost || facilities.length >= 15">Build</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contracts Panel -->
+        <div class="panel">
+          <h3>📜 Contracts</h3>
+          <div v-if="pendingContractOffer" class="contract-offer">
+            <p><strong>{{ pendingContractOffer.patronName }}</strong></p>
+            <p class="flavour">{{ pendingContractOffer.flavourText }}</p>
+            <ul>
+              <li v-for="(qty, good) in pendingContractOffer.requirements" :key="good"
+                :class="getHolding(good) >= qty ? 'met' : 'short'">
+                {{ good }}: need {{ qty }}, have {{ getHolding(good) }}
+              </li>
+            </ul>
+            <p>Reward: {{ pendingContractOffer.rewardGold.toFixed(0) }}g | Penalty: {{ pendingContractOffer.penaltyGold.toFixed(0) }}g</p>
+            <button class="btn btn-primary" @click="acceptContract">Accept</button>
+            <button class="btn btn-secondary" @click="declineContract">Decline</button>
+          </div>
+          <div v-else-if="activeContract" class="contract-active">
+            <p><strong>{{ activeContract.patronName }}</strong></p>
+            <p class="flavour">{{ activeContract.flavourText }}</p>
+            <ul>
+              <li v-for="(qty, good) in activeContract.requirements" :key="good"
+                :class="getHolding(good) >= qty ? 'met' : 'short'">
+                {{ good }}: need {{ qty }}, have {{ getHolding(good) }}
+              </li>
+            </ul>
+            <p :class="activeContract.ticksLeft <= 3 ? 'urgent' : activeContract.ticksLeft <= 6 ? 'warning' : ''">
+              ⏳ {{ activeContract.ticksLeft }} ticks remaining
+            </p>
+            <p>Reward: {{ activeContract.rewardGold.toFixed(0) }}g | Penalty: {{ activeContract.penaltyGold.toFixed(0) }}g</p>
+            <button class="btn btn-primary" :disabled="!canDeliver" @click="deliverContract">Deliver</button>
+          </div>
+          <p v-else class="muted">No active contract.</p>
+        </div>
+
+        <!-- Rumours Panel -->
+        <div class="panel">
+          <h3>🗣️ Rumours</h3>
+          <p v-if="rumours.length === 0" class="muted">No rumours circulating.</p>
+          <div v-for="r in rumours" :key="r.id" class="rumour-card">
+            <p>{{ r.text }}</p>
+            <p class="muted">⏳ {{ r.ticksRemaining }} ticks</p>
+            <span v-if="r.confirmed" class="reliable">✓ Confirmed!</span>
+            <span v-else-if="r.tipResult" :class="r.tipResult === 'RELIABLE' ? 'reliable' : 'dubious'">
+              {{ r.tipResult === 'RELIABLE' ? '✓ Seems reliable' : '✗ Seems dubious' }}
+            </span>
+            <button v-else class="btn btn-sm" :disabled="session.gold < (guild && guild.name === 'SCHOLARS_GUILD' ? 5 : 10)"
+              @click="tipRumour(r.id)">
+              Tip ({{ guild && guild.name === 'SCHOLARS_GUILD' ? 5 : 10 }}g)
+            </button>
+          </div>
+        </div>
+
+        <!-- Black Market Panel (appears when active) -->
+        <div v-if="blackMarketOffers && blackMarketOffers.length > 0" class="panel panel-warning">
+          <h3>⚠️ Black Market</h3>
+          <div v-for="offer in blackMarketOffers" :key="offer.goodName" class="bm-row">
+            <span>{{ offer.goodName }} ({{ offer.availableQty }} avail) — {{ offer.discountedPrice.toFixed(1) }}g ea</span>
+            <button class="btn btn-sm btn-warning" @click="buyContraband(offer.goodName, 1)">Buy 1</button>
+          </div>
+        </div>
+
         <div class="scoreboard">
           <h2 class="section-title">Scoreboard</h2>
           <div v-for="(entry, i) in scoreboard" :key="entry.name"
@@ -402,6 +533,18 @@
         </div>
       </div>
     </div>
+    <!-- Guild Offer Modal -->
+    <div v-if="pendingGuildOffer" class="modal-overlay">
+      <div class="panel modal-panel">
+        <h3>⚔️ Guild Invitation</h3>
+        <p><strong>{{ pendingGuildOffer.displayName }}</strong></p>
+        <p>{{ pendingGuildOffer.description }}</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" @click="acceptGuild">Join</button>
+          <button class="btn btn-secondary" @click="declineGuild">Decline</button>
+        </div>
+      </div>
+    </div>
   </template>
 </div>
 
@@ -411,7 +554,8 @@ const { createApp, ref, reactive, computed, onMounted, nextTick } = Vue;
 const GOOD_ICONS = {
   Grain:'🌾', Wool:'🧶', Livestock:'🐄', Ale:'🍺', Spices:'🌶️',
   Iron:'⚙️', Coal:'🪨', Stone:'🪨', Gems:'💎', Salt:'🧂',
-  Timber:'🪵', Rope:'🪢', Cloth:'🧵', Leather:'🫙', Candles:'🕯️'
+  Timber:'🪵', Rope:'🪢', Cloth:'🧵', Leather:'🫙', Candles:'🕯️',
+  Bread:'🍞', Weapons:'⚔️', Wine:'🍷', Soap:'🧼', Elixir:'🧪'
 };
 
 const ACHIEVEMENTS = [
@@ -455,6 +599,25 @@ createApp({
     const events    = ref([]);
     const scoreboard = ref([]);
     const reconnecting = ref(false);
+
+    // ── Expansion fields ──────────────────────────────────────────────────────
+    const guild = ref(null);
+    const pendingGuildOffer = ref(null);
+    const exoticImportOffer = ref(null);
+    const fenceCooldown = ref(0);
+    const facilities = ref([]);
+    const activeContract = ref(null);
+    const pendingContractOffer = ref(null);
+    const rumours = ref([]);
+    const blackMarketOffers = ref(null);
+    const contrabandHoldings = ref({});
+    const facilityTypes = [
+      { type: 'MILL',       label: 'Mill',       cost: 150, recipe: '3 Grain + 1 Salt → 2 Bread' },
+      { type: 'FORGE',      label: 'Forge',      cost: 400, recipe: '2 Iron + 1 Coal → 1 Weapons' },
+      { type: 'WINERY',     label: 'Winery',     cost: 250, recipe: '2 Ale + 1 Honey → 1 Wine' },
+      { type: 'SOAPWORKS',  label: 'Soapworks',  cost: 200, recipe: '2 Wax + 1 Salt → 3 Soap' },
+      { type: 'APOTHECARY', label: 'Apothecary', cost: 500, recipe: '2 Herbs + 1 Honey → 1 Elixir' },
+    ];
 
     // Event-flash state
     const eventBanner      = ref('');
@@ -612,6 +775,19 @@ createApp({
       Math.round((1 - session.seasonTicksRemaining / 60) * 100)
     );
 
+    // ── Holdings helper ───────────────────────────────────────────────────────
+    const getHolding = (good) => (session.holdings && session.holdings[good]) || 0;
+
+    // ── Expansion computed ────────────────────────────────────────────────────
+    const facilityCounts = computed(() =>
+      facilities.value.reduce((acc, f) => { acc[f] = (acc[f] || 0) + 1; return acc; }, {})
+    );
+    const canDeliver = computed(() => {
+      if (!activeContract.value) return false;
+      return Object.entries(activeContract.value.requirements)
+        .every(([good, qty]) => getHolding(good) >= qty);
+    });
+
     // ── Achievement helpers ───────────────────────────────────────────────────
     const unlockAchievement = (id) => {
       if (achievements.value.includes(id)) return;
@@ -749,6 +925,58 @@ createApp({
       }
     };
 
+    // ── Flash message helper ──────────────────────────────────────────────────
+    const showEvent = (msg) => {
+      eventBanner.value = msg;
+      eventBannerFading.value = false;
+      setTimeout(() => { eventBannerFading.value = true; }, 3000);
+      setTimeout(() => { eventBanner.value = ''; eventBannerFading.value = false; }, 4000);
+    };
+
+    // ── Expansion API methods ─────────────────────────────────────────────────
+    const acceptGuild = async () => {
+      await fetch('/api/guild/accept', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const declineGuild = async () => {
+      await fetch('/api/guild/decline', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const fenceSell = async (goodName, qty) => {
+      await fetch('/api/guild/fence', {
+        method: 'POST',
+        headers: { 'X-Session-Id': session.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goodName, quantity: qty })
+      });
+    };
+    const buyExoticImport = async () => {
+      await fetch('/api/guild/exotic-import/buy', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const buildFacility = async (type) => {
+      await fetch('/api/facility/build', {
+        method: 'POST',
+        headers: { 'X-Session-Id': session.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+    };
+    const acceptContract = async () => {
+      await fetch('/api/contract/accept', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const declineContract = async () => {
+      await fetch('/api/contract/decline', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const deliverContract = async () => {
+      await fetch('/api/contract/deliver', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const tipRumour = async (id) => {
+      await fetch(`/api/rumours/${id}/tip`, { method: 'POST', headers: { 'X-Session-Id': session.id } });
+    };
+    const buyContraband = async (goodName, qty) => {
+      await fetch('/api/blackmarket/buy', {
+        method: 'POST',
+        headers: { 'X-Session-Id': session.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goodName, quantity: qty })
+      });
+    };
+
     // ── WebSocket tick handler ────────────────────────────────────────────────
     const applyTick = (payload) => {
       // Capture old prices before overwriting
@@ -847,6 +1075,17 @@ createApp({
                 checkAchievementsOnSell(fill.realizedPnl, fill.goodName);
               }
             }
+            guild.value = update.guild || null;
+            pendingGuildOffer.value = update.pendingGuildOffer || null;
+            exoticImportOffer.value = update.exoticImportOffer || null;
+            fenceCooldown.value = update.fenceCooldown || 0;
+            facilities.value = update.facilities || [];
+            activeContract.value = update.activeContract || null;
+            pendingContractOffer.value = update.pendingContractOffer || null;
+            rumours.value = update.rumours || [];
+            blackMarketOffers.value = update.blackMarketOffers || null;
+            contrabandHoldings.value = update.contrabandHoldings || {};
+            if (update.flashMessage) showEvent(update.flashMessage);
           });
           // Fetch snapshot to seed prices and charts
           fetch('/api/market/snapshot').then(r => r.json()).then(snap => {
@@ -984,6 +1223,15 @@ createApp({
       hasAlert, toggleAlertPopover, setAlert, clearAlert,
       addOrder, cancelOrder, borrow, repay,
       checkAchievementsOnSell, checkAchievementsOnTick,
+      // Expansion
+      guild, pendingGuildOffer, exoticImportOffer, fenceCooldown,
+      facilities, facilityTypes, facilityCounts,
+      activeContract, pendingContractOffer, canDeliver,
+      rumours, blackMarketOffers, contrabandHoldings,
+      getHolding,
+      acceptGuild, declineGuild, fenceSell, buyExoticImport,
+      buildFacility, acceptContract, declineContract, deliverContract,
+      tipRumour, buyContraband,
     };
   }
 }).mount('#app');
