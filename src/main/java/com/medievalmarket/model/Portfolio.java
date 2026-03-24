@@ -7,6 +7,12 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.medievalmarket.model.Guild;
+import com.medievalmarket.model.FacilityType;
+import com.medievalmarket.model.Contract;
+import com.medievalmarket.model.Rumour;
+import com.medievalmarket.model.BlackMarketOffer;
+import com.medievalmarket.model.ExoticImportOffer;
 
 public class Portfolio {
     private final String sessionId;
@@ -20,6 +26,35 @@ public class Portfolio {
     private final boolean bot;
     private double loanAmount = 0.0;
     private final List<LimitOrder> limitOrders = new ArrayList<>();
+
+    // Guild state
+    private Guild guild = null;
+    private Guild pendingGuildOffer = null;
+    private Guild lastOfferedGuild = null;
+    private int guildOfferCooldown = 0;
+    private int fenceCooldown = 0;
+    private ExoticImportOffer exoticImportOffer = null;
+    private String lastSeenSeason = null;
+
+    // Facility state
+    private final List<FacilityType> facilities = new ArrayList<>();
+
+    // Contract state
+    private Contract activeContract = null;
+    private Contract pendingContractOffer = null;
+    private int ticksSinceLastOffer = 0;
+
+    // Rumour state
+    private final List<Rumour> rumours = new ArrayList<>();
+
+    // Black market state
+    private final Map<String, Integer> contrabandHoldings = new HashMap<>();
+    private List<BlackMarketOffer> blackMarketOffers = null;
+    private int blackMarketTicksRemaining = 0;
+    private int blackMarketTicksSinceLastRoll = 0;
+
+    // Flash message (one-shot, consumed after SessionUpdate push)
+    private String lastFlashMessage = null;
 
     public Portfolio(String sessionId, String playerName, PlayerClass playerClass) {
         this(sessionId, playerName, playerClass, false);
@@ -95,4 +130,54 @@ public class Portfolio {
         limitOrders.removeIf(o -> o.id().equals(id));
     }
     public synchronized int limitOrderCount() { return limitOrders.size(); }
+
+    public synchronized Guild getGuild() { return guild; }
+    public synchronized void setGuild(Guild guild) { this.guild = guild; }
+    public synchronized Guild getPendingGuildOffer() { return pendingGuildOffer; }
+    public synchronized void setPendingGuildOffer(Guild g) { this.pendingGuildOffer = g; }
+    public synchronized Guild getLastOfferedGuild() { return lastOfferedGuild; }
+    public synchronized void setLastOfferedGuild(Guild g) { this.lastOfferedGuild = g; }
+    public synchronized int getGuildOfferCooldown() { return guildOfferCooldown; }
+    public synchronized void setGuildOfferCooldown(int v) { this.guildOfferCooldown = v; }
+    public synchronized int getFenceCooldown() { return fenceCooldown; }
+    public synchronized void setFenceCooldown(int v) { this.fenceCooldown = v; }
+    public synchronized ExoticImportOffer getExoticImportOffer() { return exoticImportOffer; }
+    public synchronized void setExoticImportOffer(ExoticImportOffer o) { this.exoticImportOffer = o; }
+    public synchronized String getLastSeenSeason() { return lastSeenSeason; }
+    public synchronized void setLastSeenSeason(String s) { this.lastSeenSeason = s; }
+
+    public synchronized List<FacilityType> getFacilities() { return new ArrayList<>(facilities); }
+    public synchronized void addFacility(FacilityType f) { facilities.add(f); }
+    public synchronized int getFacilityCount() { return facilities.size(); }
+
+    public synchronized Contract getActiveContract() { return activeContract; }
+    public synchronized void setActiveContract(Contract c) { this.activeContract = c; }
+    public synchronized Contract getPendingContractOffer() { return pendingContractOffer; }
+    public synchronized void setPendingContractOffer(Contract c) { this.pendingContractOffer = c; }
+    public synchronized int getTicksSinceLastOffer() { return ticksSinceLastOffer; }
+    public synchronized void setTicksSinceLastOffer(int v) { this.ticksSinceLastOffer = v; }
+
+    public synchronized List<Rumour> getRumours() { return new ArrayList<>(rumours); }
+    public synchronized void addRumour(Rumour r) { rumours.add(r); }
+    public synchronized void removeExpiredRumours() { rumours.removeIf(r -> r.getTicksRemaining() <= 0); }
+
+    public synchronized Map<String, Integer> getContrabandHoldings() { return new HashMap<>(contrabandHoldings); }
+    public synchronized int getContrabandHolding(String good) { return contrabandHoldings.getOrDefault(good, 0); }
+    public synchronized void addContrabandHolding(String good, int qty) {
+        contrabandHoldings.merge(good, qty, Integer::sum);
+    }
+    public synchronized void clearContrabandHoldings() { contrabandHoldings.clear(); }
+    public synchronized boolean hasContraband() { return !contrabandHoldings.isEmpty(); }
+
+    public synchronized List<BlackMarketOffer> getBlackMarketOffers() {
+        return blackMarketOffers == null ? null : new ArrayList<>(blackMarketOffers);
+    }
+    public synchronized void setBlackMarketOffers(List<BlackMarketOffer> offers) { this.blackMarketOffers = offers; }
+    public synchronized int getBlackMarketTicksRemaining() { return blackMarketTicksRemaining; }
+    public synchronized void setBlackMarketTicksRemaining(int v) { this.blackMarketTicksRemaining = v; }
+    public synchronized int getBlackMarketTicksSinceLastRoll() { return blackMarketTicksSinceLastRoll; }
+    public synchronized void setBlackMarketTicksSinceLastRoll(int v) { this.blackMarketTicksSinceLastRoll = v; }
+
+    public synchronized String getLastFlashMessage() { return lastFlashMessage; }
+    public synchronized void setLastFlashMessage(String msg) { this.lastFlashMessage = msg; }
 }
