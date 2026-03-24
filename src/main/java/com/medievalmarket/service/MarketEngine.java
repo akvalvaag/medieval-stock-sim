@@ -106,8 +106,8 @@ public class MarketEngine {
                 String flashMsg = blackMarketService.processTick(p);
                 if (flashMsg != null) p.setLastFlashMessage(flashMsg);
             }
-            // FacilityService, ContractService, RumourService use processAll() so their internal
-            // tick counters increment exactly once per market tick
+            // FacilityService and ContractService use processAll(); RumourService uses processTick()
+            // All three are called exactly once per market tick
             facilityService.processAll(humans);
             contractService.processAll(humans);
             rumourService.processTick();

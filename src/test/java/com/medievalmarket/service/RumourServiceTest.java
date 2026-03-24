@@ -34,11 +34,14 @@ class RumourServiceTest {
     }
 
     @Test
-    void processTick_expiresRumoursAfter30Ticks() {
-        for (int i = 0; i < 20; i++) service.processTick();
-        assertThat(service.getRumours().size()).isGreaterThan(0);
-        for (int i = 0; i < 31; i++) service.processTick();
-        service.getRumours().forEach(r -> assertThat(r.getTicksRemaining()).isGreaterThan(0));
+    void processTick_removesExpiredRumours() {
+        // Inject a rumour with a known short TTL and verify it is removed after expiry
+        Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test", "war", true, 5);
+        service.injectRumourForTesting(r);
+        assertThat(service.getRumours().size()).isEqualTo(1);
+        // Run 5 ticks — decrements to 0, removed on next tick
+        for (int i = 0; i < 5; i++) service.processTick();
+        assertThat(service.getRumours().size()).isEqualTo(0);
     }
 
     @Test
