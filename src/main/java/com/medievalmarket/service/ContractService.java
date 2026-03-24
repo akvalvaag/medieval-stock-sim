@@ -59,7 +59,10 @@ public class ContractService {
             }
         }
         p.setTicksSinceLastOffer(p.getTicksSinceLastOffer() + 1);
-        if (p.getTicksSinceLastOffer() >= 40
+        if (p.getPendingContractOffer() != null && p.getTicksSinceLastOffer() >= 55) {
+            p.setPendingContractOffer(null);
+            p.setTicksSinceLastOffer(0);
+        } else if (p.getTicksSinceLastOffer() >= 40
                 && p.getActiveContract() == null
                 && p.getPendingContractOffer() == null) {
             p.setPendingContractOffer(generateContract(p));

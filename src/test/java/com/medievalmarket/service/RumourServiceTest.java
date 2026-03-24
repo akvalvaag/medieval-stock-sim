@@ -26,10 +26,10 @@ class RumourServiceTest {
     }
 
     @Test
-    void processTick_addsSingleRumourPer20Ticks() {
-        for (int i = 0; i < 20; i++) service.processTick();
+    void processTick_addsSingleRumourPer10Ticks() {
+        for (int i = 0; i < 10; i++) service.processTick();
         assertThat(service.getRumours().size()).isEqualTo(1);
-        for (int i = 0; i < 20; i++) service.processTick();
+        for (int i = 0; i < 10; i++) service.processTick();
         assertThat(service.getRumours().size()).isEqualTo(2);
     }
 

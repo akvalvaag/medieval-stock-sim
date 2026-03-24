@@ -39,7 +39,7 @@ public class RumourService {
         tickCount++;
         activeRumours.forEach(Rumour::decrementTick);
         activeRumours.removeIf(r -> r.getTicksRemaining() <= 0);
-        if (tickCount % 20 == 0 && activeRumours.size() < 3) {
+        if (tickCount % 10 == 0 && activeRumours.size() < 3) {
             addOneRumour();
         }
     }
