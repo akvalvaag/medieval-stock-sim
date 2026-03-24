@@ -6,7 +6,10 @@ public class Contract {
     private final String patronName;
     private final String flavourText;
     private final Map<String, Integer> requirements;
-    private int ticksRemaining;
+    /** Original deadline in ticks — immutable, used as the displayed/loop limit. */
+    private final int ticksRemaining;
+    /** Live countdown, decremented each tick. */
+    private int ticksLeft;
     private final double rewardGold;
     private final double penaltyGold;
 
@@ -16,6 +19,7 @@ public class Contract {
         this.flavourText = flavourText;
         this.requirements = requirements;
         this.ticksRemaining = ticksRemaining;
+        this.ticksLeft = ticksRemaining;
         this.rewardGold = rewardGold;
         this.penaltyGold = penaltyGold;
     }
@@ -23,8 +27,11 @@ public class Contract {
     public String getPatronName() { return patronName; }
     public String getFlavourText() { return flavourText; }
     public Map<String, Integer> getRequirements() { return requirements; }
+    /** Returns the original deadline tick count (immutable). For live countdown use {@link #getTicksLeft()}. */
     public int getTicksRemaining() { return ticksRemaining; }
-    public void decrementTick() { ticksRemaining--; }
+    /** Returns the live countdown — decremented each tick. */
+    public int getTicksLeft() { return ticksLeft; }
+    public void decrementTick() { ticksLeft--; }
     public double getRewardGold() { return rewardGold; }
     public double getPenaltyGold() { return penaltyGold; }
 }
