@@ -7,9 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GoodsCatalogueTest {
 
     @Test
-    void catalogueHas15Goods() {
+    void catalogueHas29Goods() {
         GoodsCatalogue catalogue = new GoodsCatalogue();
-        assertThat(catalogue.getGoods()).hasSize(15);
+        assertThat(catalogue.getGoods()).hasSize(29);
     }
 
     @Test
@@ -21,12 +21,30 @@ class GoodsCatalogueTest {
     }
 
     @Test
-    void miningCategoryHasFiveGoods() {
+    void miningCategoryHasEightGoods() {
         GoodsCatalogue catalogue = new GoodsCatalogue();
         long count = catalogue.getGoods().stream()
             .filter(g -> "Mining".equals(g.getCategory()))
             .count();
-        assertThat(count).isEqualTo(5);
+        assertThat(count).isEqualTo(8);
+    }
+
+    @Test
+    void agricultureCategoryHasElevenGoods() {
+        GoodsCatalogue catalogue = new GoodsCatalogue();
+        long count = catalogue.getGoods().stream()
+            .filter(g -> "Agriculture".equals(g.getCategory()))
+            .count();
+        assertThat(count).isEqualTo(11);
+    }
+
+    @Test
+    void timberAndCraftCategoryHasTenGoods() {
+        GoodsCatalogue catalogue = new GoodsCatalogue();
+        long count = catalogue.getGoods().stream()
+            .filter(g -> "Timber & Craft".equals(g.getCategory()))
+            .count();
+        assertThat(count).isEqualTo(10);
     }
 
     @Test
@@ -34,6 +52,6 @@ class GoodsCatalogueTest {
         GoodsCatalogue catalogue = new GoodsCatalogue();
         long uniqueNames = catalogue.getGoods().stream()
             .map(Good::getName).distinct().count();
-        assertThat(uniqueNames).isEqualTo(15);
+        assertThat(uniqueNames).isEqualTo(29);
     }
 }
