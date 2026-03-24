@@ -3,7 +3,6 @@ package com.medievalmarket.service;
 import com.medievalmarket.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
@@ -22,43 +21,45 @@ class RumourServiceTest {
 
     @Test
     void processTick_fillsUpTo3RumourSlots() {
-        Portfolio p = merchant();
-        // One rumour added per 10 ticks; run 30 ticks to fill all 3 slots
-        for (int i = 0; i < 30; i++) service.processTick(p);
-        assertThat(p.getRumours().size()).isEqualTo(3);
+        for (int i = 0; i < 60; i++) service.processTick();
+        assertThat(service.getRumours().size()).isEqualTo(3);
     }
 
     @Test
-    void processTick_addsSingleRumourPer10Ticks() {
-        Portfolio p = merchant();
-        for (int i = 0; i < 10; i++) service.processTick(p);
-        assertThat(p.getRumours().size()).isEqualTo(1);
-        for (int i = 0; i < 10; i++) service.processTick(p);
-        assertThat(p.getRumours().size()).isEqualTo(2);
+    void processTick_addsSingleRumourPer20Ticks() {
+        for (int i = 0; i < 20; i++) service.processTick();
+        assertThat(service.getRumours().size()).isEqualTo(1);
+        for (int i = 0; i < 20; i++) service.processTick();
+        assertThat(service.getRumours().size()).isEqualTo(2);
     }
 
     @Test
     void processTick_expiresRumoursAfter30Ticks() {
-        Portfolio p = merchant();
-        // Fill a slot at tick 10; the rumour has ticksRemaining=30
-        for (int i = 0; i < 10; i++) service.processTick(p);
-        assertThat(p.getRumours().size()).isGreaterThan(0);
-        // Run 31 more ticks to expire it
-        for (int i = 0; i < 31; i++) service.processTick(p);
-        // All surviving rumours must still have time remaining
-        p.getRumours().forEach(r -> assertThat(r.getTicksRemaining()).isGreaterThan(0));
+        for (int i = 0; i < 20; i++) service.processTick();
+        assertThat(service.getRumours().size()).isGreaterThan(0);
+        for (int i = 0; i < 31; i++) service.processTick();
+        service.getRumours().forEach(r -> assertThat(r.getTicksRemaining()).isGreaterThan(0));
+    }
+
+    @Test
+    void processTick_noDuplicateEventKeys() {
+        for (int i = 0; i < 60; i++) service.processTick();
+        long distinctKeys = service.getRumours().stream()
+            .map(r -> r.getEventKey()).distinct().count();
+        assertThat(distinctKeys).isEqualTo(service.getRumours().size());
     }
 
     @Test
     void tip_deductsGoldAndReturnsTipResult() {
         Portfolio p = merchant();
         p.setGold(100.0);
-        for (int i = 0; i < 20; i++) service.processTick(p);
-        assumeThat(p.getRumours()).isNotEmpty();
-        String id = p.getRumours().get(0).getId();
+        for (int i = 0; i < 20; i++) service.processTick();
+        assumeThat(service.getRumours()).isNotEmpty();
+        String id = service.getRumours().get(0).getId();
         String result = service.tip(p, id);
         assertThat(result).isIn("RELIABLE", "DUBIOUS");
-        assertThat(p.getGold()).isCloseTo(90.0, within(0.01)); // 10g cost
+        assertThat(p.getTipResult(id)).isEqualTo(result);
+        assertThat(p.getGold()).isCloseTo(90.0, within(0.01));
     }
 
     @Test
@@ -66,20 +67,20 @@ class RumourServiceTest {
         Portfolio p = merchant();
         p.setGold(100.0);
         p.setGuild(Guild.SCHOLARS_GUILD);
-        for (int i = 0; i < 20; i++) service.processTick(p);
-        assumeThat(p.getRumours()).isNotEmpty();
-        String id = p.getRumours().get(0).getId();
+        for (int i = 0; i < 20; i++) service.processTick();
+        assumeThat(service.getRumours()).isNotEmpty();
+        String id = service.getRumours().get(0).getId();
         service.tip(p, id);
-        assertThat(p.getGold()).isCloseTo(95.0, within(0.01)); // 5g cost
+        assertThat(p.getGold()).isCloseTo(95.0, within(0.01));
     }
 
     @Test
     void tip_failsWhenInsufficientGold() {
         Portfolio p = merchant();
         p.setGold(5.0);
-        for (int i = 0; i < 20; i++) service.processTick(p);
-        assumeThat(p.getRumours()).isNotEmpty();
-        String id = p.getRumours().get(0).getId();
+        for (int i = 0; i < 20; i++) service.processTick();
+        assumeThat(service.getRumours()).isNotEmpty();
+        String id = service.getRumours().get(0).getId();
         assertThatThrownBy(() -> service.tip(p, id))
             .isInstanceOf(RumourService.RumourException.class)
             .hasMessageContaining("funds");
@@ -89,9 +90,9 @@ class RumourServiceTest {
     void tip_failsWhenAlreadyTipped() {
         Portfolio p = merchant();
         p.setGold(100.0);
-        for (int i = 0; i < 20; i++) service.processTick(p);
-        assumeThat(p.getRumours()).isNotEmpty();
-        String id = p.getRumours().get(0).getId();
+        for (int i = 0; i < 20; i++) service.processTick();
+        assumeThat(service.getRumours()).isNotEmpty();
+        String id = service.getRumours().get(0).getId();
         service.tip(p, id);
         assertThatThrownBy(() -> service.tip(p, id))
             .isInstanceOf(RumourService.RumourException.class)
@@ -108,20 +109,19 @@ class RumourServiceTest {
     }
 
     @Test
-    void onEventFired_marksMatchingRumoursAsConfirmed() {
-        Portfolio p = merchant();
-        Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test rumour", "war", true, 30);
-        p.addRumour(r);
-        service.onEventFired("war", List.of(p));
-        assertThat(p.getRumours().get(0).isConfirmed()).isTrue();
+    void onEventFired_removesMatchingRumour() {
+        Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test", "war", true, 30);
+        service.injectRumourForTesting(r);
+        assertThat(service.getRumours().size()).isEqualTo(1);
+        service.onEventFired("war");
+        assertThat(service.getRumours().size()).isEqualTo(0);
     }
 
     @Test
-    void onEventFired_doesNotMarkNonMatchingRumours() {
-        Portfolio p = merchant();
-        Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test rumour", "spice", true, 30);
-        p.addRumour(r);
-        service.onEventFired("war", List.of(p));
-        assertThat(p.getRumours().get(0).isConfirmed()).isFalse();
+    void onEventFired_doesNotRemoveNonMatchingRumour() {
+        Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test", "spice", true, 30);
+        service.injectRumourForTesting(r);
+        service.onEventFired("war");
+        assertThat(service.getRumours().size()).isEqualTo(1);
     }
 }

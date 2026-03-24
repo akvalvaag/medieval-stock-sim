@@ -7,10 +7,10 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import com.medievalmarket.model.Guild;
 import com.medievalmarket.model.FacilityType;
 import com.medievalmarket.model.Contract;
-import com.medievalmarket.model.Rumour;
 import com.medievalmarket.model.BlackMarketOffer;
 import com.medievalmarket.model.ExoticImportOffer;
 
@@ -44,8 +44,8 @@ public class Portfolio {
     private Contract pendingContractOffer = null;
     private int ticksSinceLastOffer = 0;
 
-    // Rumour state
-    private final List<Rumour> rumours = new ArrayList<>();
+    // Tip results (rumourId → "RELIABLE" | "DUBIOUS")
+    private final Map<String, String> tipResults = new HashMap<>();
 
     // Black market state
     private final Map<String, Integer> contrabandHoldings = new HashMap<>();
@@ -157,9 +157,18 @@ public class Portfolio {
     public synchronized int getTicksSinceLastOffer() { return ticksSinceLastOffer; }
     public synchronized void setTicksSinceLastOffer(int v) { this.ticksSinceLastOffer = v; }
 
-    public synchronized List<Rumour> getRumours() { return new ArrayList<>(rumours); }
-    public synchronized void addRumour(Rumour r) { rumours.add(r); }
-    public synchronized void removeExpiredRumours() { rumours.removeIf(r -> r.getTicksRemaining() <= 0); }
+    public synchronized String getTipResult(String rumourId) {
+        return tipResults.get(rumourId);
+    }
+    public synchronized void setTipResult(String rumourId, String result) {
+        tipResults.put(rumourId, result);
+    }
+    public synchronized void removeTipResultsNotIn(Set<String> activeIds) {
+        tipResults.keySet().retainAll(activeIds);
+    }
+    public synchronized Map<String, String> getTipResults() {
+        return new HashMap<>(tipResults);
+    }
 
     public synchronized Map<String, Integer> getContrabandHoldings() { return new HashMap<>(contrabandHoldings); }
     public synchronized int getContrabandHolding(String good) { return contrabandHoldings.getOrDefault(good, 0); }

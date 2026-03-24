@@ -110,10 +110,10 @@ public class MarketEngine {
             // tick counters increment exactly once per market tick
             facilityService.processAll(humans);
             contractService.processAll(humans);
-            rumourService.processAll(humans);
+            rumourService.processTick();
             // Notify RumourService of any fired event
             if (firedEventKey != null) {
-                rumourService.onEventFired(firedEventKey, humans);
+                rumourService.onEventFired(firedEventKey);
             }
 
             // 10. Compute scoreboard (includes bots)
@@ -134,9 +134,9 @@ public class MarketEngine {
             // 12. Push per-session updates
             for (Portfolio p : humans) {
                 // Build rumour DTOs (omit isTrue — client must not know)
-                List<SessionUpdate.RumourDTO> rumourDTOs = p.getRumours().stream()
+                List<SessionUpdate.RumourDTO> rumourDTOs = rumourService.getRumours().stream()
                     .map(r -> new SessionUpdate.RumourDTO(r.getId(), r.getText(), r.getEventKey(),
-                                                           r.getTicksRemaining(), r.getTipResult()))
+                                                           r.getTicksRemaining(), p.getTipResult(r.getId())))
                     .toList();
 
                 SessionUpdate update = SessionUpdate.builder()

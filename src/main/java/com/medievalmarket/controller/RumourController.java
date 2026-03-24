@@ -26,15 +26,16 @@ public class RumourController {
     public ResponseEntity<?> getRumours(@RequestHeader("X-Session-Id") String sessionId) {
         Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        List<Map<String, Object>> rumours = opt.get().getRumours().stream()
+        Portfolio p = opt.get();
+        List<Map<String, Object>> rumours = rumourService.getRumours().stream()
             .map(r -> {
-                java.util.Map<String, Object> dto = new java.util.HashMap<>();
+                Map<String, Object> dto = new java.util.HashMap<>();
                 dto.put("id", r.getId());
                 dto.put("text", r.getText());
                 dto.put("eventKey", r.getEventKey());
                 dto.put("ticksRemaining", r.getTicksRemaining());
-                dto.put("tipResult", r.getTipResult() == null ? "" : r.getTipResult());
-                dto.put("confirmed", r.isConfirmed());
+                String tip = p.getTipResult(r.getId());
+                dto.put("tipResult", tip == null ? "" : tip);
                 return dto;
             }).toList();
         return ResponseEntity.ok(rumours);
