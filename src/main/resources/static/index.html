@@ -959,13 +959,24 @@ createApp({
       });
     };
     const acceptContract = async () => {
-      await fetch('/api/contract/accept', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      const res = await fetch('/api/contract/accept', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      if (res.ok) {
+        const data = await res.json();
+        activeContract.value = data.activeContract;
+        pendingContractOffer.value = null;
+      }
     };
     const declineContract = async () => {
-      await fetch('/api/contract/decline', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      const res = await fetch('/api/contract/decline', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      if (res.ok) pendingContractOffer.value = null;
     };
     const deliverContract = async () => {
-      await fetch('/api/contract/deliver', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      const res = await fetch('/api/contract/deliver', { method: 'POST', headers: { 'X-Session-Id': session.id } });
+      if (res.ok) {
+        const data = await res.json();
+        session.gold = data.gold;
+        activeContract.value = null;
+      }
     };
     const tipRumour = async (id) => {
       const res = await fetch(`/api/rumours/${id}/tip`, { method: 'POST', headers: { 'X-Session-Id': session.id } });
