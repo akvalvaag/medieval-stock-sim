@@ -39,8 +39,11 @@ class RumourServiceTest {
         Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test", "war", true, 5);
         service.injectRumourForTesting(r);
         assertThat(service.getRumours().size()).isEqualTo(1);
-        // Run 5 ticks — decrements to 0, removed on next tick
-        for (int i = 0; i < 5; i++) service.processTick();
+        // Run 4 ticks — rumour should still be alive (ticksRemaining=1)
+        for (int i = 0; i < 4; i++) service.processTick();
+        assertThat(service.getRumours().size()).isEqualTo(1);
+        // 5th tick brings ticksRemaining to 0 — removed
+        service.processTick();
         assertThat(service.getRumours().size()).isEqualTo(0);
     }
 

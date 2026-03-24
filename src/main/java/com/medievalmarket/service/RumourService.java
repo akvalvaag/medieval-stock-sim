@@ -30,16 +30,13 @@ public class RumourService {
         Map.entry("alchemist",    "The palace physician has been requesting unusual quantities of rare herbs...")
     );
 
-    private static final List<String> EVENT_KEYS = List.of(
-        "war", "harvest", "spice", "iron_vein", "gems", "wool", "banquet", "embargo", "plague",
-        "drought", "fire", "silver_vein", "guild_strike", "salt_shortage", "alchemist"
-    );
+    private static final List<String> EVENT_KEYS = List.copyOf(EVENT_RUMOURS.keySet());
 
     private final List<Rumour> activeRumours = new ArrayList<>();
     private int tickCount = 0;
 
     /** Called once per market tick by MarketEngine (and directly by tests). */
-    public void processTick() {
+    public synchronized void processTick() {
         tickCount++;
         activeRumours.forEach(Rumour::decrementTick);
         activeRumours.removeIf(r -> r.getTicksRemaining() <= 0);
@@ -60,13 +57,13 @@ public class RumourService {
         }
     }
 
-    /** Returns an unmodifiable view of current active rumours. */
-    public List<Rumour> getRumours() {
-        return Collections.unmodifiableList(activeRumours);
+    /** Returns an unmodifiable snapshot of current active rumours. */
+    public synchronized List<Rumour> getRumours() {
+        return Collections.unmodifiableList(new ArrayList<>(activeRumours));
     }
 
     /** Tips a rumour for a specific player. Verdict is private to that player. */
-    public String tip(Portfolio p, String rumourId) {
+    public synchronized String tip(Portfolio p, String rumourId) {
         Rumour rumour = activeRumours.stream()
             .filter(r -> r.getId().equals(rumourId))
             .findFirst()
@@ -85,12 +82,12 @@ public class RumourService {
     }
 
     /** Removes any rumour matching the fired event key from the global list. */
-    public void onEventFired(String eventKey) {
+    public synchronized void onEventFired(String eventKey) {
         activeRumours.removeIf(r -> r.getEventKey().equals(eventKey));
     }
 
     /** Test helper — injects a rumour directly into the active list. */
-    void injectRumourForTesting(Rumour r) {
+    synchronized void injectRumourForTesting(Rumour r) {
         activeRumours.add(r);
     }
 }
