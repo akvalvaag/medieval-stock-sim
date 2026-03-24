@@ -63,20 +63,26 @@ public class RumourService {
     }
 
     /** Tips a rumour for a specific player. Verdict is private to that player. */
-    public synchronized String tip(Portfolio p, String rumourId) {
-        Rumour rumour = activeRumours.stream()
-            .filter(r -> r.getId().equals(rumourId))
-            .findFirst()
-            .orElseThrow(() -> new RumourException("Rumour not found"));
-        if (p.getTipResult(rumourId) != null)
-            throw new RumourException("already tipped this rumour");
-        double cost = (p.getGuild() == Guild.SCHOLARS_GUILD) ? 5.0 : 10.0;
-        if (p.getGold() < cost)
-            throw new RumourException("Insufficient funds");
+    public String tip(Portfolio p, String rumourId) {
+        // Validate and compute verdict under service lock — no Portfolio mutation here
+        final String tipResult;
+        final double cost;
+        synchronized (this) {
+            Rumour rumour = activeRumours.stream()
+                .filter(r -> r.getId().equals(rumourId))
+                .findFirst()
+                .orElseThrow(() -> new RumourException("Rumour not found"));
+            if (p.getTipResult(rumourId) != null)
+                throw new RumourException("already tipped this rumour");
+            cost = (p.getGuild() == Guild.SCHOLARS_GUILD) ? 5.0 : 10.0;
+            if (p.getGold() < cost)
+                throw new RumourException("Insufficient funds");
+            boolean correctVerdict = ThreadLocalRandom.current().nextDouble() < 0.70;
+            boolean verdict = correctVerdict ? rumour.isTrue() : !rumour.isTrue();
+            tipResult = verdict ? "RELIABLE" : "DUBIOUS";
+        }
+        // Mutate Portfolio outside service lock to avoid lock-ordering inversion
         p.setGold(p.getGold() - cost);
-        boolean correctVerdict = ThreadLocalRandom.current().nextDouble() < 0.70;
-        boolean verdict = correctVerdict ? rumour.isTrue() : !rumour.isTrue();
-        String tipResult = verdict ? "RELIABLE" : "DUBIOUS";
         p.setTipResult(rumourId, tipResult);
         return tipResult;
     }

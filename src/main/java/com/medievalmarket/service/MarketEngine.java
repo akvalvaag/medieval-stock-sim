@@ -116,14 +116,16 @@ public class MarketEngine {
             facilityService.processAll(humans);
             contractService.processAll(humans);
             rumourService.processTick();
+            // Notify RumourService of any fired event before collecting active IDs,
+            // so the just-fired rumour is excluded from the snapshot and its tip
+            // results are cleaned up in the same tick.
+            if (firedEventKey != null) {
+                rumourService.onEventFired(firedEventKey);
+            }
             Set<String> activeRumourIds = rumourService.getRumours().stream()
                 .map(r -> r.getId())
                 .collect(Collectors.toSet());
             humans.forEach(p -> p.removeTipResultsNotIn(activeRumourIds));
-            // Notify RumourService of any fired event
-            if (firedEventKey != null) {
-                rumourService.onEventFired(firedEventKey);
-            }
 
             // 10. Compute scoreboard (includes bots)
             List<ScoreboardEntry> scoreboard = scoreboardService.compute(
