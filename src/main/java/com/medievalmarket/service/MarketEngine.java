@@ -12,6 +12,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class MarketEngine {
@@ -71,7 +72,11 @@ public class MarketEngine {
             Map<String, Double> seasonMods = seasonEngine.getModifiers();
 
             // 2. Maybe fire an event
-            EventEngine.FiredEvent event = eventEngine.maybeFireEvent(java.util.Set.of());
+            Set<String> boostedKeys = rumourService.getRumours().stream()
+                .filter(r -> r.isTrue())
+                .map(r -> r.getEventKey())
+                .collect(Collectors.toSet());
+            EventEngine.FiredEvent event = eventEngine.maybeFireEvent(boostedKeys);
             Map<String, Double> eventModifiers = event != null ? event.modifiers() : Map.of();
 
             // 3. Reprice all goods (event modifier + season nudge)
@@ -111,6 +116,10 @@ public class MarketEngine {
             facilityService.processAll(humans);
             contractService.processAll(humans);
             rumourService.processTick();
+            Set<String> activeRumourIds = rumourService.getRumours().stream()
+                .map(r -> r.getId())
+                .collect(Collectors.toSet());
+            humans.forEach(p -> p.removeTipResultsNotIn(activeRumourIds));
             // Notify RumourService of any fired event
             if (firedEventKey != null) {
                 rumourService.onEventFired(firedEventKey);
