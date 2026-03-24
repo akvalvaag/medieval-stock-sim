@@ -8,7 +8,7 @@ import java.util.Collection;
 public class FacilityService {
 
     private final GoodsCatalogue catalogue;
-    private int tickCount = 0;
+    private volatile int tickCount = 0;
 
     public FacilityService(GoodsCatalogue catalogue) {
         this.catalogue = catalogue;
@@ -28,10 +28,12 @@ public class FacilityService {
     }
 
     public void demolish(Portfolio p, FacilityType type) {
-        if (!p.getFacilities().contains(type))
-            throw new FacilityException("FACILITY_NOT_FOUND");
-        p.removeFacility(type);
-        p.setGold(p.getGold() + type.getBuildCost() * 0.5);
+        synchronized (p) {
+            if (!p.getFacilities().contains(type))
+                throw new FacilityException("FACILITY_NOT_FOUND");
+            p.removeFacility(type);
+            p.setGold(p.getGold() + type.getBuildCost() * 0.5);
+        }
     }
 
     public int getTicksUntilProduction() {

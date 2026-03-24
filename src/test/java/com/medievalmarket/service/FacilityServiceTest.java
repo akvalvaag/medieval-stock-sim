@@ -99,6 +99,14 @@ class FacilityServiceTest {
     }
 
     @Test
+    void demolish_removesLastCopyLeavesEmptyList() {
+        Portfolio p = richMerchant();
+        service.build(p, FacilityType.FORGE);
+        service.demolish(p, FacilityType.FORGE);
+        assertThat(p.getFacilities()).isEmpty();
+    }
+
+    @Test
     void demolish_throwsWhenTypeNotOwned() {
         Portfolio p = richMerchant();
         assertThatThrownBy(() -> service.demolish(p, FacilityType.FORGE))
@@ -109,6 +117,7 @@ class FacilityServiceTest {
     @Test
     void getTicksUntilProduction_countsDownFrom5() {
         Portfolio p = richMerchant();
+        assertThat(service.getTicksUntilProduction()).isEqualTo(5);
         service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(4);
         service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(3);
         service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(2);
