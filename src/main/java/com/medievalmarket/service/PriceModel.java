@@ -18,8 +18,9 @@ public class PriceModel {
                 * (ThreadLocalRandom.current().nextBoolean() ? 1 : -1);
         price *= (1 + drift);
 
-        // 2. Supply/demand pressure
-        price *= (1 + good.getSupplyPressure() * 0.01);
+        // 2. Supply/demand pressure (capped at ±5% per tick to prevent manipulation)
+        double pressureEffect = Math.max(-0.05, Math.min(0.05, good.getSupplyPressure() * 0.01));
+        price *= (1 + pressureEffect);
 
         // 3. Event modifier
         if (eventModifier != 0.0) {

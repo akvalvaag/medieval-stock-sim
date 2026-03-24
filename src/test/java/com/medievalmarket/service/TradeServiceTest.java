@@ -114,8 +114,8 @@ class TradeServiceTest {
     void buyAddsBuyPressure() {
         Portfolio p = noble();
         service.buy(p, "Iron", 4);
-        // pressure = +4 * 0.5 = +2.0
-        assertThat(iron.getSupplyPressure()).isCloseTo(2.0, within(0.001));
+        // pressure = +4 * 0.02 = +0.08
+        assertThat(iron.getSupplyPressure()).isCloseTo(0.08, within(0.001));
     }
 
     @Test
@@ -125,6 +125,7 @@ class TradeServiceTest {
         iron.setCurrentPrice(40.0);
         iron.addSupplyPressure(-iron.getSupplyPressure()); // reset
         service.sell(p, "Iron", 2);
-        assertThat(iron.getSupplyPressure()).isCloseTo(-1.0, within(0.001));
+        // pressure = -2 * 0.02 = -0.04
+        assertThat(iron.getSupplyPressure()).isCloseTo(-0.04, within(0.001));
     }
 }

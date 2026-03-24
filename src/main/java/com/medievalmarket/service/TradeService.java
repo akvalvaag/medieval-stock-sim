@@ -19,7 +19,8 @@ public class TradeService {
         validateQuantity(quantity);
         Good good = catalogue.findByName(goodName);
         double feeRate = portfolio.getPlayerClass().getFeeRate();
-        double cost = good.getCurrentPrice() * quantity * (1 + feeRate);
+        double slippage = quantity >= 10 ? Math.min(quantity * 0.001, 0.05) : 0.0;
+        double cost = good.getCurrentPrice() * quantity * (1 + feeRate + slippage);
 
         synchronized (portfolio) {
             if (portfolio.getGold() < cost) throw new TradeException("INSUFFICIENT_FUNDS");
@@ -30,7 +31,7 @@ public class TradeService {
         }
 
         synchronized (good) {
-            good.addSupplyPressure(quantity * 0.5);
+            good.addSupplyPressure(quantity * 0.02);
         }
     }
 
@@ -44,7 +45,8 @@ public class TradeService {
 
             double saleValue = good.getCurrentPrice() * quantity;
             double feeRate = portfolio.getPlayerClass().getFeeRate();
-            saleValue *= (1 - feeRate);
+            double slippage = quantity >= 10 ? Math.min(quantity * 0.001, 0.05) : 0.0;
+            saleValue *= (1 - feeRate - slippage);
 
             if (portfolio.getPlayerClass() == PlayerClass.MINER
                     && "Mining".equals(good.getCategory())) {
@@ -59,7 +61,7 @@ public class TradeService {
         }
 
         synchronized (good) {
-            good.addSupplyPressure(-quantity * 0.5);
+            good.addSupplyPressure(-quantity * 0.02);
         }
     }
 
