@@ -90,7 +90,9 @@ public class ContractService {
         }
         c.getRequirements().forEach((good, qty) ->
             p.setHolding(good, p.getHolding(good) - qty));
-        p.setGold(p.getGold() + c.getRewardGold());
+        double reward = c.getRewardGold();
+        if (p.getGuild() == Guild.ROYAL_WARRANT) reward *= 1.6;
+        p.setGold(p.getGold() + reward);
         p.setActiveContract(null);
     }
 
@@ -108,7 +110,6 @@ public class ContractService {
         double rewardGoodPrice = catalogue.findByName(tmpl.rewardGood()).getCurrentPrice();
         double reward = rewardGoodPrice * totalQty * premiumRate;
         reward = reward * (0.80 + rng.nextDouble() * 0.40); // ±20%
-        if (p.getGuild() == Guild.ROYAL_WARRANT) reward *= 1.6;
         double penalty = Math.max(0.0, reward * 0.15);
         return new Contract(tmpl.patronName(), tmpl.flavourText(), reqs, ticks, reward, penalty);
     }

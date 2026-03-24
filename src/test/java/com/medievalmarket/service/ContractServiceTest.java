@@ -4,6 +4,7 @@ import com.medievalmarket.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.data.Offset.offset;
 
 class ContractServiceTest {
 
@@ -88,11 +89,13 @@ class ContractServiceTest {
         for (int i = 0; i < 40; i++) service.processTick(p);
         service.accept(p);
         Contract c = p.getActiveContract();
+        double baseReward = c.getRewardGold();
         c.getRequirements().forEach((good, qty) -> p.setHolding(good, qty));
         double goldBefore = p.getGold();
         service.deliver(p);
-        // Royal Warrant gives 1.6× base reward, so gold increase must be > base reward
-        assertThat(p.getGold()).isGreaterThan(goldBefore);
+        double goldGained = p.getGold() - goldBefore;
+        // Royal Warrant multiplies reward by 1.6 at delivery time
+        assertThat(goldGained).isCloseTo(baseReward * 1.6, offset(0.01));
     }
 
     @Test
