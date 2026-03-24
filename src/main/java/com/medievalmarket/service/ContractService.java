@@ -14,21 +14,22 @@ public class ContractService {
 
     private record ContractTemplate(String patronName, String flavourText,
                                      Map<String, Integer> baseRequirements,
-                                     int baseTicks, double premiumRate) {}
+                                     String rewardGood,
+                                     int baseTicks) {}
 
     private static final List<ContractTemplate> TEMPLATES = List.of(
-        new ContractTemplate("The King", "His Majesty hosts a grand feast. He requires provisions.",
-            Map.of("Bread", 30, "Wine", 20), 15, 0.35),
-        new ContractTemplate("Baron Aldric", "The Baron marches to war. His army needs arming.",
-            Map.of("Weapons", 25, "Rope", 20), 12, 0.40),
-        new ContractTemplate("The Church", "The Church blesses the harvest. They seek offerings.",
-            Map.of("Grain", 40, "Candles", 10), 10, 0.25),
-        new ContractTemplate("Lady Matilda", "The Lady rebuilds her keep after the great fire.",
-            Map.of("Timber", 30, "Stone", 15), 14, 0.30),
-        new ContractTemplate("The Harbour Master", "The fleet departs at dawn and must be provisioned.",
-            Map.of("Rope", 20, "Fish", 30, "Salt", 10), 12, 0.32),
-        new ContractTemplate("The Apothecary Guild", "A sickness spreads through the city. Lives hang in the balance.",
-            Map.of("Elixir", 15, "Herbs", 20), 10, 0.45)
+        new ContractTemplate("The Miller", "The mill runs day and night. Flour and preservation are needed.",
+            Map.of("Grain", 7, "Salt", 4), "Bread", 60),
+        new ContractTemplate("Master Blacksmith", "The forge burns hot. Iron and fuel must be supplied.",
+            Map.of("Iron", 6, "Coal", 6), "Iron", 60),
+        new ContractTemplate("The Vintner", "The vintner prepares his finest vintage for the season.",
+            Map.of("Grain", 10, "Honey", 4), "Wine", 60),
+        new ContractTemplate("Court Apothecary", "The apothecary's stores run low. Lives depend on timely delivery.",
+            Map.of("Herbs", 7, "Honey", 3), "Elixir", 60),
+        new ContractTemplate("The Shipwright", "The shipwright races to complete the hull before the tide turns.",
+            Map.of("Timber", 8, "Rope", 6), "Timber", 60),
+        new ContractTemplate("Merchant Guild", "The guild requires diverse stock to supply the autumn fair.",
+            Map.of("Grain", 4, "Wool", 4, "Iron", 3), "Silver", 60)
     );
 
     private final GoodsCatalogue catalogue;
@@ -85,7 +86,7 @@ public class ContractService {
         if (c == null) throw new ContractException("No active contract");
         for (Map.Entry<String, Integer> e : c.getRequirements().entrySet()) {
             if (p.getHolding(e.getKey()) < e.getValue())
-                throw new ContractException("Cannot meet requirements: need more " + e.getKey());
+                throw new ContractException("requirements not met");
         }
         c.getRequirements().forEach((good, qty) ->
             p.setHolding(good, p.getHolding(good) - qty));
@@ -101,10 +102,12 @@ public class ContractService {
             int qty = (int) Math.max(1, Math.round(baseQty * (0.80 + rng.nextDouble() * 0.40)));
             reqs.put(good, qty);
         });
-        int ticks = (int) Math.max(5, Math.round(tmpl.baseTicks() * (0.80 + rng.nextDouble() * 0.40)));
-        double reward = reqs.entrySet().stream()
-            .mapToDouble(e -> catalogue.findByName(e.getKey()).getCurrentPrice() * e.getValue() * tmpl.premiumRate())
-            .sum();
+        int ticks = 40 + rng.nextInt(41); // 40–80 ticks
+        double premiumRate = 1.15 + rng.nextDouble() * 0.20; // 1.15–1.35
+        int totalQty = reqs.values().stream().mapToInt(Integer::intValue).sum();
+        double rewardGoodPrice = catalogue.findByName(tmpl.rewardGood()).getCurrentPrice();
+        double reward = rewardGoodPrice * totalQty * premiumRate;
+        reward = reward * (0.80 + rng.nextDouble() * 0.40); // ±20%
         if (p.getGuild() == Guild.ROYAL_WARRANT) reward *= 1.6;
         double penalty = Math.max(0.0, reward * 0.15);
         return new Contract(tmpl.patronName(), tmpl.flavourText(), reqs, ticks, reward, penalty);

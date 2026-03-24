@@ -82,6 +82,20 @@ class ContractServiceTest {
     }
 
     @Test
+    void deliver_royalWarrantMultipliesReward() {
+        Portfolio p = merchant();
+        p.setGuild(Guild.ROYAL_WARRANT);
+        for (int i = 0; i < 40; i++) service.processTick(p);
+        service.accept(p);
+        Contract c = p.getActiveContract();
+        c.getRequirements().forEach((good, qty) -> p.setHolding(good, qty));
+        double goldBefore = p.getGold();
+        service.deliver(p);
+        // Royal Warrant gives 1.6× base reward, so gold increase must be > base reward
+        assertThat(p.getGold()).isGreaterThan(goldBefore);
+    }
+
+    @Test
     void processTick_appliesPenaltyOnExpiry() {
         Portfolio p = merchant();
         for (int i = 0; i < 40; i++) service.processTick(p);

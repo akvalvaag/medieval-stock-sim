@@ -28,7 +28,7 @@ public class ContractController {
         Portfolio p = opt.get();
         Map<String, Object> result = new HashMap<>();
         result.put("activeContract", p.getActiveContract());
-        result.put("pendingOffer", p.getPendingContractOffer());
+        result.put("pendingContractOffer", p.getPendingContractOffer());
         return ResponseEntity.ok(result);
     }
 
@@ -37,8 +37,9 @@ public class ContractController {
         Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
         try {
-            contractService.accept(opt.get());
-            return ResponseEntity.ok(Map.of());
+            Portfolio p = opt.get();
+            contractService.accept(p);
+            return ResponseEntity.ok(Map.of("activeContract", p.getActiveContract()));
         } catch (ContractService.ContractException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
