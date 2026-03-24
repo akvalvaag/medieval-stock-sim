@@ -27,6 +27,18 @@ public class FacilityService {
         p.addFacility(type);
     }
 
+    public void demolish(Portfolio p, FacilityType type) {
+        if (!p.getFacilities().contains(type))
+            throw new FacilityException("FACILITY_NOT_FOUND");
+        p.removeFacility(type);
+        p.setGold(p.getGold() + type.getBuildCost() * 0.5);
+    }
+
+    public int getTicksUntilProduction() {
+        return 5 - (tickCount % 5);
+        // Returns 5 when production just fired (tickCount % 5 == 0); counts down 4,3,2,1 otherwise.
+    }
+
     /** For tests — increments counter once per call. */
     public void processTick(Portfolio p) {
         tickCount++;

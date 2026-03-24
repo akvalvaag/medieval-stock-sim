@@ -79,4 +79,40 @@ class FacilityServiceTest {
         for (int i = 0; i < 5; i++) service.processTick(p);
         assertThat(p.getHolding("Bread")).isEqualTo(4); // 2 × 2 = 4
     }
+
+    @Test
+    void demolish_refundsHalfBuildCost() {
+        Portfolio p = richMerchant();
+        service.build(p, FacilityType.FORGE); // costs 400g
+        double goldAfterBuild = p.getGold();
+        service.demolish(p, FacilityType.FORGE);
+        assertThat(p.getGold()).isEqualTo(goldAfterBuild + 200.0); // 50% of 400
+    }
+
+    @Test
+    void demolish_removesOneCopyWhenMultipleOwned() {
+        Portfolio p = richMerchant();
+        service.build(p, FacilityType.FORGE);
+        service.build(p, FacilityType.FORGE);
+        service.demolish(p, FacilityType.FORGE);
+        assertThat(p.getFacilities()).hasSize(1).containsExactly(FacilityType.FORGE);
+    }
+
+    @Test
+    void demolish_throwsWhenTypeNotOwned() {
+        Portfolio p = richMerchant();
+        assertThatThrownBy(() -> service.demolish(p, FacilityType.FORGE))
+            .isInstanceOf(FacilityService.FacilityException.class)
+            .hasMessageContaining("FACILITY_NOT_FOUND");
+    }
+
+    @Test
+    void getTicksUntilProduction_countsDownFrom5() {
+        Portfolio p = richMerchant();
+        service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(4);
+        service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(3);
+        service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(2);
+        service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(1);
+        service.processTick(p); assertThat(service.getTicksUntilProduction()).isEqualTo(5); // fired, resets
+    }
 }

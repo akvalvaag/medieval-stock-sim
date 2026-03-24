@@ -149,6 +149,9 @@ public class Portfolio {
     public synchronized List<FacilityType> getFacilities() { return new ArrayList<>(facilities); }
     public synchronized void addFacility(FacilityType f) { facilities.add(f); }
     public synchronized int getFacilityCount() { return facilities.size(); }
+    public synchronized void removeFacility(FacilityType type) {
+        facilities.remove(type); // removes first occurrence
+    }
 
     public synchronized Contract getActiveContract() { return activeContract; }
     public synchronized void setActiveContract(Contract c) { this.activeContract = c; }
