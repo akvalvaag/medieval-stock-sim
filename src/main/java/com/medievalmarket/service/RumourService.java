@@ -21,7 +21,6 @@ public class RumourService {
         Map.entry("wool",         "Weavers in three villages report empty looms this season..."),
         Map.entry("banquet",      "The palace kitchens have been burning lights all night..."),
         Map.entry("embargo",      "Merchants' caravans are turning back at the border gates..."),
-        Map.entry("plague",       "Physicians are unusually busy near the market district..."),
         Map.entry("drought",      "Farmers near the river report cracked earth and dying livestock..."),
         Map.entry("fire",         "Smoke has been seen rising from the carpenter's quarter at night..."),
         Map.entry("silver_vein",  "A cartographer's apprentice was caught mapping the northern ridge in secret..."),
