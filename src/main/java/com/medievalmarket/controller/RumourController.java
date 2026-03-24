@@ -27,13 +27,16 @@ public class RumourController {
         Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
         List<Map<String, Object>> rumours = opt.get().getRumours().stream()
-            .map(r -> Map.<String, Object>of(
-                "id", r.getId(),
-                "text", r.getText(),
-                "eventKey", r.getEventKey(),
-                "ticksRemaining", r.getTicksRemaining(),
-                "tipResult", r.getTipResult() == null ? "" : r.getTipResult()
-            )).toList();
+            .map(r -> {
+                java.util.Map<String, Object> dto = new java.util.HashMap<>();
+                dto.put("id", r.getId());
+                dto.put("text", r.getText());
+                dto.put("eventKey", r.getEventKey());
+                dto.put("ticksRemaining", r.getTicksRemaining());
+                dto.put("tipResult", r.getTipResult() == null ? "" : r.getTipResult());
+                dto.put("confirmed", r.isConfirmed());
+                return dto;
+            }).toList();
         return ResponseEntity.ok(rumours);
     }
 

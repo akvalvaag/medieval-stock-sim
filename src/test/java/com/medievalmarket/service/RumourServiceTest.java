@@ -92,6 +92,15 @@ class RumourServiceTest {
     }
 
     @Test
+    void tip_failsWhenRumourNotFound() {
+        Portfolio p = merchant();
+        p.setGold(100.0);
+        assertThatThrownBy(() -> service.tip(p, "nonexistent-id"))
+            .isInstanceOf(RumourService.RumourException.class)
+            .hasMessageContaining("not found");
+    }
+
+    @Test
     void onEventFired_marksMatchingRumoursAsConfirmed() {
         Portfolio p = merchant();
         Rumour r = new Rumour(java.util.UUID.randomUUID().toString(), "Test rumour", "war", true, 30);

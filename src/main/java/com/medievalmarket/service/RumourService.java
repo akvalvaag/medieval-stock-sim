@@ -24,7 +24,9 @@ public class RumourService {
         "plague",    "Physicians are unusually busy near the market district..."
     );
 
-    private static final List<String> EVENT_KEYS = new ArrayList<>(EVENT_RUMOURS.keySet());
+    private static final List<String> EVENT_KEYS = List.of(
+        "war", "harvest", "spice", "iron_vein", "gems", "wool", "banquet", "embargo", "plague"
+    );
 
     // tickCount represents market ticks elapsed, not per-portfolio calls.
     // processTick() is for tests; production code uses processAll().
