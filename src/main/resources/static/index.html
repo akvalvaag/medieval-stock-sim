@@ -193,6 +193,18 @@
     .bm-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
     .contract-offer ul, .contract-active ul { padding-left: 1.2rem; font-size: .82rem; margin: .4rem 0; }
     .facility-build-list { margin-top: .4rem; }
+    .facility-card { background: #16213e; border-radius: 5px; padding: 8px 10px; margin: 5px 0; border-left: 3px solid transparent; }
+    .facility-active { border-left-color: #4ade80; }
+    .facility-idle   { border-left-color: #f87171; }
+    .facility-card-top { display: flex; justify-content: space-between; align-items: center; }
+    .facility-recipe { color: #888; font-size: .73rem; margin-top: 2px; }
+    .facility-output { color: #4ade80; font-size: .73rem; margin-top: 2px; }
+    .facility-missing { color: #f87171; font-size: .73rem; margin-top: 2px; }
+    .facility-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .demolish-confirm { display: flex; justify-content: space-between; align-items: center; background: #2a1a1a; border: 1px solid #f8717155; border-radius: 4px; padding: 5px 8px; margin-top: 6px; font-size: .78rem; color: #f87171; gap: 8px; }
+    .status-active { color: #4ade80; font-size: .75rem; }
+    .status-idle   { color: #f87171; font-size: .75rem; }
+    .section-label { color: #555; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; margin: 10px 0 4px; }
   </style>
 </head>
 <body>
@@ -278,7 +290,7 @@
               <td>{{ goodIcon(good.name) }} {{ good.name }}</td>
               <td><span class="cat-badge">{{ good.category }}</span></td>
               <td :class="priceClass(good.name)">{{ fmt(prices[good.name]) }}g {{ priceArrow(good.name) }}</td>
-              <td style="color:#a78bfa;font-size:.8rem;text-align:right">
+              <td :style="{fontSize:'.8rem',textAlign:'right',color: session.costBasis[good.name] == null ? '' : prices[good.name] >= session.costBasis[good.name] ? '#4ade80' : '#f87171'}">
                 {{ session.costBasis[good.name] != null ? fmt(session.costBasis[good.name]) + 'g' : '' }}
               </td>
               <td class="chart-cell"><canvas :ref="el => registerCanvas(good.name, el)" class="sparkline"></canvas></td>
@@ -298,7 +310,7 @@
                           @click="trade('sell', good.name, 100)">100</button>
                   <button class="btn-sell"
                           :disabled="(session.holdings[good.name] || 0) < 1"
-                          @click="trade('sell', good.name, session.holdings[good.name] || 0)">All</button>
+                          @click="trade('sell', good.name, session.holdings[good.name] || 0, true)">All</button>
                   <button v-if="guild && guild.name === 'THIEVES_GUILD' && fenceCooldown === 0 && getHolding(good.name) > 0"
                     class="btn-sell btn-xs btn-warning"
                     @click="fenceSell(good.name, getHolding(good.name))">Fence</button>
@@ -319,7 +331,7 @@
                           @click="trade('buy', good.name, 100)">100</button>
                   <button class="btn-buy"
                           :disabled="buyMax(good.name) < 1"
-                          @click="trade('buy', good.name, buyMax(good.name))">Max</button>
+                          @click="trade('buy', good.name, buyMax(good.name), true)">Max</button>
                 </div>
               </td>
               <td class="col-bell">
@@ -444,19 +456,58 @@
 
         <!-- Facilities Panel -->
         <div class="panel">
-          <h3>🏭 Facilities</h3>
-          <p v-if="facilities.length === 0" class="muted">No facilities built.</p>
-          <div v-else>
-            <span v-for="(count, type) in facilityCounts" :key="type">{{ type }} ×{{ count }} </span>
-            — {{ facilities.length }}/15
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <h3>🏭 Facilities</h3>
+            <span class="muted" style="font-size:.75rem">
+              {{ facilities.length }}/15 built · next cycle {{ session.ticksUntilProduction }} tick{{ session.ticksUntilProduction === 1 ? '' : 's' }}
+            </span>
           </div>
-          <div class="facility-build-list">
-            <div v-for="ft in facilityTypes" :key="ft.type" class="facility-row">
-              <span>{{ ft.label }} — {{ ft.cost }}g</span>
-              <span class="recipe">{{ ft.recipe }}</span>
-              <button class="btn btn-sm" @click="buildFacility(ft.type)"
-                :disabled="session.gold < ft.cost || facilities.length >= 15">Build</button>
+
+          <p v-if="ownedFacilityCards.length === 0" class="muted">No facilities built.</p>
+
+          <div v-for="card in ownedFacilityCards" :key="card.type"
+               class="facility-card"
+               :class="card.canProduce ? 'facility-active' : 'facility-idle'">
+            <div class="facility-card-top">
+              <span><strong>{{ card.ft.label }}</strong> <span style="color:#f59e0b">×{{ card.count }}</span></span>
+              <span :class="card.canProduce ? 'status-active' : 'status-idle'">
+                ● {{ card.canProduce ? 'Active' : 'Idle' }}
+              </span>
             </div>
+            <div class="facility-recipe">{{ card.ft.recipe }}</div>
+            <div v-if="card.canProduce" class="facility-output">
+              → producing {{ card.outputQty }} {{ card.ft.outputGood }} next cycle
+            </div>
+            <div v-else v-for="m in card.missing" :key="m" class="facility-missing">
+              ⚠ Missing: {{ m }}
+            </div>
+            <div class="facility-actions">
+              <button class="btn btn-sm" style="color:#f87171;border-color:#f87171"
+                      @click="toggleDemolishConfirm(card.type)">Demolish</button>
+              <button class="btn btn-sm"
+                      :disabled="session.gold < card.ft.cost || facilities.length >= 15"
+                      @click="buildFacility(card.type)">
+                + Build another ({{ card.ft.cost }}g)
+              </button>
+            </div>
+            <div v-if="demolishConfirm === card.type" class="demolish-confirm">
+              <span>Demolish 1 {{ card.ft.label }} for
+                <strong style="color:#4ade80">{{ (card.ft.cost * 0.5).toFixed(0) }}g</strong> refund?</span>
+              <span style="display:flex;gap:5px">
+                <button class="btn btn-sm" style="color:#f87171;border-color:#f87171"
+                        @click="demolishFacility(card.type)">Confirm</button>
+                <button class="btn btn-sm" @click="demolishConfirm = null">Cancel</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="section-label" style="margin-top:.8rem">Build new facility</div>
+          <div v-for="ft in facilityTypes" :key="ft.type" class="facility-row">
+            <span>{{ ft.label }} — {{ ft.cost }}g</span>
+            <span class="recipe">{{ ft.recipe }}</span>
+            <button class="btn btn-sm"
+                    :disabled="session.gold < ft.cost || facilities.length >= 15"
+                    @click="buildFacility(ft.type)">Build</button>
           </div>
         </div>
 
@@ -592,6 +643,7 @@ createApp({
       season: 'SPRING',
       seasonTicksRemaining: 60,
       loanAmount: 0.0,
+      ticksUntilProduction: 5,
       limitOrders: [],
       showAddOrder: false,
       newOrder: { goodName: 'Grain', direction: 'BUY', quantity: 1, targetPrice: 0 },
@@ -618,11 +670,21 @@ createApp({
     const blackMarketOffers = ref(null);
     const contrabandHoldings = ref({});
     const facilityTypes = [
-      { type: 'MILL',       label: 'Mill',       cost: 150, recipe: '3 Grain + 1 Salt → 2 Bread' },
-      { type: 'FORGE',      label: 'Forge',      cost: 400, recipe: '2 Iron + 1 Coal → 1 Weapons' },
-      { type: 'WINERY',     label: 'Winery',     cost: 250, recipe: '2 Ale + 1 Honey → 1 Wine' },
-      { type: 'SOAPWORKS',  label: 'Soapworks',  cost: 200, recipe: '2 Wax + 1 Salt → 3 Soap' },
-      { type: 'APOTHECARY', label: 'Apothecary', cost: 500, recipe: '2 Herbs + 1 Honey → 1 Elixir' },
+      { type: 'MILL',       label: 'Mill',       cost: 150,
+        inputs: [['Grain',3],['Salt',1]],         outputGood: 'Bread',   outputQty: 2,
+        recipe: '3 Grain + 1 Salt → 2 Bread' },
+      { type: 'FORGE',      label: 'Forge',      cost: 400,
+        inputs: [['Iron',2],['Coal',1]],          outputGood: 'Weapons', outputQty: 1,
+        recipe: '2 Iron + 1 Coal → 1 Weapons' },
+      { type: 'WINERY',     label: 'Winery',     cost: 250,
+        inputs: [['Ale',2],['Honey',1]],          outputGood: 'Wine',    outputQty: 1,
+        recipe: '2 Ale + 1 Honey → 1 Wine' },
+      { type: 'SOAPWORKS',  label: 'Soapworks',  cost: 200,
+        inputs: [['Wax',2],['Salt',1]],           outputGood: 'Soap',    outputQty: 3,
+        recipe: '2 Wax + 1 Salt → 3 Soap' },
+      { type: 'APOTHECARY', label: 'Apothecary', cost: 500,
+        inputs: [['Herbs',2],['Honey',1]],        outputGood: 'Elixir',  outputQty: 1,
+        recipe: '2 Herbs + 1 Honey → 1 Elixir' },
     ];
 
     // Event-flash state
@@ -710,7 +772,16 @@ createApp({
     const buyMax = name => {
       const price = prices[name] || 0;
       if (price <= 0) return 0;
-      return Math.floor(session.gold / (price * feeMultiplier()));
+      const feeRate = feeMultiplier() - 1;
+      // Start with no-slippage estimate, then reduce until cost fits
+      // (server applies slippage = min(qty*0.001, 0.05) for qty >= 10)
+      let qty = Math.floor(session.gold / (price * feeMultiplier()));
+      while (qty > 0) {
+        const slippage = qty >= 10 ? Math.min(qty * 0.001, 0.05) : 0;
+        if (price * qty * (1 + feeRate + slippage) <= session.gold) break;
+        qty--;
+      }
+      return qty;
     };
 
     const canSell = (name, qty) => {
@@ -786,9 +857,25 @@ createApp({
     const getHolding = (good) => (session.holdings && session.holdings[good]) || 0;
 
     // ── Expansion computed ────────────────────────────────────────────────────
-    const facilityCounts = computed(() =>
-      facilities.value.reduce((acc, f) => { acc[f] = (acc[f] || 0) + 1; return acc; }, {})
-    );
+    const demolishConfirm = ref(null);
+
+    const ownedFacilityCards = computed(() => {
+      const counts = {};
+      for (const f of facilities.value) counts[f] = (counts[f] || 0) + 1;
+      return Object.entries(counts).map(([type, count]) => {
+        const ft = facilityTypes.find(t => t.type === type);
+        const canProduce = ft.inputs.every(([good, qty]) =>
+          (session.holdings[good] || 0) >= qty);
+        const missing = ft.inputs
+          .filter(([good, qty]) => (session.holdings[good] || 0) < qty)
+          .map(([good, qty]) => {
+            const have = session.holdings[good] || 0;
+            return `${qty - have} ${good} (have ${have})`;
+          });
+        const outputQty = ft.outputQty * count;
+        return { type, count, ft, canProduce, missing, outputQty };
+      });
+    });
     const canDeliver = computed(() => {
       if (!activeContract.value) return false;
       return Object.entries(activeContract.value.requirements)
@@ -964,6 +1051,22 @@ createApp({
         body: JSON.stringify({ type })
       });
     };
+    const toggleDemolishConfirm = (type) => {
+      demolishConfirm.value = demolishConfirm.value === type ? null : type;
+    };
+
+    const demolishFacility = async (type) => {
+      demolishConfirm.value = null;
+      const res = await fetch('/api/facility/demolish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Session-Id': session.id },
+        body: JSON.stringify({ type })
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      facilities.value = data.facilities || [];
+      session.gold = data.gold;
+    };
     const acceptContract = async () => {
       const res = await fetch('/api/contract/accept', { method: 'POST', headers: { 'X-Session-Id': session.id } });
       if (res.ok) {
@@ -981,6 +1084,7 @@ createApp({
       if (res.ok) {
         const data = await res.json();
         session.gold = data.gold;
+        if (data.holdings) session.holdings = data.holdings;
         activeContract.value = null;
       }
     };
@@ -1110,6 +1214,10 @@ createApp({
             blackMarketOffers.value = update.blackMarketOffers || null;
             contrabandHoldings.value = update.contrabandHoldings || {};
             if (update.flashMessage) showEvent(update.flashMessage);
+            if (update.holdings)   session.holdings  = update.holdings;
+            if (update.costBasis)  session.costBasis = update.costBasis;
+            if (update.ticksUntilProduction != null)
+                session.ticksUntilProduction = update.ticksUntilProduction;
           });
           // Fetch snapshot to seed prices and charts
           fetch('/api/market/snapshot').then(r => r.json()).then(snap => {
@@ -1183,7 +1291,7 @@ createApp({
     };
 
     // ── Trade ─────────────────────────────────────────────────────────────────
-    const trade = async (action, goodName, qty) => {
+    const trade = async (action, goodName, qty, silent = false) => {
       if (!qty || qty < 1) return;
       const res = await fetch(`/api/trade/${action}`, {
         method: 'POST',
@@ -1209,7 +1317,7 @@ createApp({
         if (action === 'sell') {
           checkAchievementsOnSell(data.realizedPnl || 0, goodName);
         }
-      } else {
+      } else if (!silent) {
         alert(data.error || 'Trade failed');
       }
     };
@@ -1249,12 +1357,13 @@ createApp({
       checkAchievementsOnSell, checkAchievementsOnTick,
       // Expansion
       guild, pendingGuildOffer, exoticImportOffer, fenceCooldown,
-      facilities, facilityTypes, facilityCounts,
+      facilities, facilityTypes, ownedFacilityCards, demolishConfirm,
       activeContract, pendingContractOffer, canDeliver,
       rumours, blackMarketOffers, contrabandHoldings,
       getHolding,
       acceptGuild, declineGuild, fenceSell, buyExoticImport,
-      buildFacility, acceptContract, declineContract, deliverContract,
+      buildFacility, toggleDemolishConfirm, demolishFacility,
+      acceptContract, declineContract, deliverContract,
       tipRumour, buyContraband,
     };
   }
