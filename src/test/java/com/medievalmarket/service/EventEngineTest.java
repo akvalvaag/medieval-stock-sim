@@ -31,15 +31,18 @@ class EventEngineTest {
     @Test
     void firedEventModifiersAreWithinExpectedRange() {
         EventEngine engine = new EventEngine();
+        EventEngine.FiredEvent observed = null;
         for (int attempt = 0; attempt < 500; attempt++) {
             EventEngine.FiredEvent event = engine.maybeFireEvent(Set.of());
             if (event != null) {
+                observed = event;
                 event.modifiers().values().forEach(modifier ->
                     assertThat(Math.abs(modifier)).isLessThanOrEqualTo(0.50)
                 );
-                return;
+                break;
             }
         }
+        assertThat(observed).as("Expected at least one event to fire in 500 attempts").isNotNull();
     }
 
     @Test

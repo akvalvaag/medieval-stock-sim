@@ -111,7 +111,7 @@ public class EventEngine {
             if (PLAGUE_PRIMARY.contains(good)) {
                 modifiers.put(good, 0.15 + ThreadLocalRandom.current().nextDouble() * 0.10);
             } else {
-                modifiers.put(good, -0.10 + ThreadLocalRandom.current().nextDouble() * 0.20);
+                modifiers.put(good, -0.05 - ThreadLocalRandom.current().nextDouble() * 0.10);
             }
         }
         return new FiredEvent("plague", "Plague outbreak! Fear grips the marketplace.", modifiers);
