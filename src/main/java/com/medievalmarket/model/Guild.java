@@ -1,5 +1,8 @@
 package com.medievalmarket.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum Guild {
     THIEVES_GUILD("Thieves' Guild",
         "Once per 20 ticks, sell any good at 110% market price with no fee or slippage. Immune to contraband confiscation."),
@@ -20,6 +23,7 @@ public enum Guild {
         this.description = description;
     }
 
+    public String getName() { return name(); }
     public String getDisplayName() { return displayName; }
     public String getDescription() { return description; }
 }
