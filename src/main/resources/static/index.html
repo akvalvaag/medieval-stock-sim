@@ -751,6 +751,7 @@ createApp({
       const color = netWorthHistory.value[netWorthHistory.value.length - 1] >=
         netWorthHistory.value[0] ? '#4ade80' : '#f87171';
       if (nwChart) {
+        nwChart.data.labels = netWorthHistory.value.map(() => '');
         nwChart.data.datasets[0].data = [...netWorthHistory.value];
         nwChart.data.datasets[0].borderColor = color;
         nwChart.update('none');
@@ -1052,7 +1053,6 @@ createApp({
       // Net worth history
       const nw = session.gold + Object.entries(session.holdings)
         .reduce((sum, [g, q]) => sum + (prices[g] || 0) * q, 0);
-      if (netWorthHistory.value.length >= 20) netWorthHistory.value.shift();
       netWorthHistory.value.push(nw);
       nextTick(() => updateNetWorthChart());
 
