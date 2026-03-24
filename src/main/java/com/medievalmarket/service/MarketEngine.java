@@ -101,12 +101,12 @@ public class MarketEngine {
 
             // 11. Push per-session updates
             for (Portfolio p : humans) {
-                SessionUpdate update = new SessionUpdate(
-                    p.getGold(),
-                    p.getLimitOrders(),
-                    p.getLoanAmount(),
-                    fills.getOrDefault(p.getSessionId(), List.of())
-                );
+                SessionUpdate update = SessionUpdate.builder()
+                    .gold(p.getGold())
+                    .limitOrders(p.getLimitOrders())
+                    .loanAmount(p.getLoanAmount())
+                    .limitOrderFills(fills.getOrDefault(p.getSessionId(), List.of()))
+                    .build();
                 messagingTemplate.convertAndSendToUser(p.getSessionId(), "/queue/updates", update);
             }
         } catch (Exception e) {
