@@ -20,16 +20,16 @@ class RumourServiceTest {
     }
 
     @Test
-    void processTick_fillsUpTo3RumourSlots() {
+    void processTick_fillsUpTo2RumourSlots() {
         for (int i = 0; i < 60; i++) service.processTick();
-        assertThat(service.getRumours().size()).isEqualTo(3);
+        assertThat(service.getRumours().size()).isEqualTo(2);
     }
 
     @Test
-    void processTick_addsSingleRumourPer10Ticks() {
-        for (int i = 0; i < 10; i++) service.processTick();
+    void processTick_addsSingleRumourPer15Ticks() {
+        for (int i = 0; i < 15; i++) service.processTick();
         assertThat(service.getRumours().size()).isEqualTo(1);
-        for (int i = 0; i < 10; i++) service.processTick();
+        for (int i = 0; i < 15; i++) service.processTick();
         assertThat(service.getRumours().size()).isEqualTo(2);
     }
 

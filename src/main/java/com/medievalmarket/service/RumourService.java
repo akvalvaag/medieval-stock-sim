@@ -39,7 +39,7 @@ public class RumourService {
         tickCount++;
         activeRumours.forEach(Rumour::decrementTick);
         activeRumours.removeIf(r -> r.getTicksRemaining() <= 0);
-        if (tickCount % 10 == 0 && activeRumours.size() < 3) {
+        if (tickCount % 15 == 0 && activeRumours.size() < 3) {
             addOneRumour();
         }
     }
@@ -51,7 +51,7 @@ public class RumourService {
             String key = EVENT_KEYS.get(ThreadLocalRandom.current().nextInt(EVENT_KEYS.size()));
             if (usedKeys.contains(key)) continue;
             boolean isTrue = ThreadLocalRandom.current().nextBoolean();
-            activeRumours.add(new Rumour(UUID.randomUUID().toString(), EVENT_RUMOURS.get(key), key, isTrue, 50));
+            activeRumours.add(new Rumour(UUID.randomUUID().toString(), EVENT_RUMOURS.get(key), key, isTrue, 30));
             return;
         }
     }
