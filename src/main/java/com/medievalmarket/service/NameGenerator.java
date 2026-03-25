@@ -10,17 +10,24 @@ public class NameGenerator {
     private static final List<String> FIRST_NAMES = List.of(
         "Aldric", "Mildred", "Godwin", "Edith", "Leofric",
         "Wulfric", "Hilda", "Oswin", "Aelswith", "Thorbert",
-        "Sigrid", "Aethelred", "Brunhilde", "Cynric", "Matilda"
+        "Sigrid", "Aethelred", "Brunhilde", "Cynric", "Matilda",
+        "Oswulf", "Aelfred", "Gytha", "Cuthbert", "Rowena",
+        "Beorn", "Eadric", "Freya", "Gunhild", "Halfdan",
+        "Ingrid", "Jorvik", "Ketil", "Leofwine", "Morwenna"
     );
 
     private static final List<String> EPITHETS = List.of(
         "the Bold", "the Cunning", "the Stout", "the Shrewd",
-        "the Fearless", "the Wise", "the Greedy", "the Lucky"
+        "the Fearless", "the Wise", "the Greedy", "the Lucky",
+        "the Swift", "the Grim", "the Fair", "the Lean",
+        "the Elder", "the Younger", "the Pious", "the Crafty"
     );
 
     private static final List<String> PLACE_SUFFIXES = List.of(
         "of Stonekeep", "of Ironhaven", "of the Moors",
-        "of Ashford", "of Greywall", "of the Valley"
+        "of Ashford", "of Greywall", "of the Valley",
+        "of Ravenport", "of the Fens", "of Coldwater",
+        "of Dunmere", "of the Highlands", "of Saltmarsh"
     );
 
     public String generate() {

@@ -574,7 +574,7 @@
 
         <div class="scoreboard">
           <h2 class="section-title">Scoreboard</h2>
-          <div v-for="(entry, i) in scoreboard" :key="entry.name"
+          <div v-for="(entry, i) in scoreboard" :key="entry.name + i"
                :class="['sb-row', entry.name === session.name ? 'me' : '']">
             <span class="sb-rank">#{{ i + 1 }}</span>
             <span class="sb-name">{{ entry.name }}</span>
