@@ -88,7 +88,8 @@
     /* Portfolio / side panel */
     .portfolio { padding: 1rem; border-bottom: 1px solid #2a2a4e; }
     .portfolio h2 { margin-bottom: .6rem; }
-    .gold-display { font-size: 1.4rem; font-weight: bold; color: #fbbf24; margin-bottom: .5rem; }
+    .gold-display { font-size: 1.4rem; font-weight: bold; color: #fbbf24; margin-bottom: .2rem; }
+    .last-fee-tag { font-size: .72rem; color: #f87171; margin-bottom: .4rem; }
     .holding-block { margin-bottom: .55rem; }
     .holding-name { font-size: .82rem; color: #cbd5e1; }
     .holding-pnl { font-size: .74rem; margin-top: 1px; }
@@ -356,6 +357,7 @@
         <div class="portfolio">
           <h2 class="section-title">{{ session.name }} <span style="color:#888;font-weight:400;text-transform:none;font-size:.7rem">({{ session.playerClass }})</span><span v-if="guild" class="guild-badge">{{ guild.displayName }}</span></h2>
           <div class="gold-display">{{ fmt(session.gold) }} gold</div>
+          <div v-if="lastFee.amount" class="last-fee-tag">fee: {{ fmt(lastFee.amount) }}g</div>
 
           <!-- Holdings with P&L -->
           <div v-for="(qty, name) in session.holdings" :key="name" class="holding-block">
@@ -657,6 +659,7 @@ createApp({
     const events    = ref([]);
     const scoreboard = ref([]);
     const reconnecting = ref(false);
+    const lastFee = reactive({ amount: 0, _timer: null });
 
     // ── Expansion fields ──────────────────────────────────────────────────────
     const guild = ref(null);
@@ -1305,6 +1308,12 @@ createApp({
         session.costBasis = data.costBasis || session.costBasis;
         if (data.loanAmount !== undefined) session.loanAmount = data.loanAmount;
         if (data.currentSeason) session.season = data.currentSeason;
+        // Show fee briefly under the gold display
+        const feeRate = session.playerClass === 'MERCHANT' ? 0.0 : 0.03;
+        const slippage = qty >= 10 ? Math.min(qty * 0.001, 0.05) : 0.0;
+        lastFee.amount = (prices[goodName] || 0) * qty * (feeRate + slippage);
+        clearTimeout(lastFee._timer);
+        lastFee._timer = setTimeout(() => { lastFee.amount = 0; }, 3000);
         localStorage.setItem('portfolio', JSON.stringify({
           gold: data.gold,
           holdings: data.holdings
@@ -1338,7 +1347,7 @@ createApp({
 
     // ── Expose to template ────────────────────────────────────────────────────
     return {
-      session, prices, goods, events, scoreboard, reconnecting,
+      session, prices, goods, events, scoreboard, reconnecting, lastFee,
       eventBanner, eventBannerFading, flashedGoods,
       netWorth, fmt,
       priceClass, priceArrow,
