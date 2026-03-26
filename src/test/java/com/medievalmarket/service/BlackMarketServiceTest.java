@@ -135,4 +135,43 @@ class BlackMarketServiceTest {
         assertThat(p.getBlackMarketOffers()).hasSize(1);
         assertThat(p.getBlackMarketOffers().get(0).availableQty()).isEqualTo(3);
     }
+
+    @Test
+    void sell_addsGoldAndReducesContraband() {
+        Portfolio p = merchant();
+        catalogue.findByName("Iron").setCurrentPrice(40.0);
+        p.addContrabandHolding("Iron", 5);
+        p.setContrabandAge("Iron", BlackMarketService.HOLDING_PERIOD);
+        service.sell(p, "Iron", 3);
+        assertThat(p.getContrabandHolding("Iron")).isEqualTo(2);
+        assertThat(p.getGold()).isCloseTo(1000.0 + 120.0, within(0.01));
+    }
+
+    @Test
+    void sell_failsWhenNotAged() {
+        Portfolio p = merchant();
+        p.addContrabandHolding("Iron", 5);
+        p.setContrabandAge("Iron", 0);
+        assertThatThrownBy(() -> service.sell(p, "Iron", 1))
+            .isInstanceOf(BlackMarketService.BlackMarketException.class)
+            .hasMessage("CONTRABAND_NOT_AGED");
+    }
+
+    @Test
+    void sell_failsWhenNoneHeld() {
+        Portfolio p = merchant();
+        assertThatThrownBy(() -> service.sell(p, "Iron", 1))
+            .isInstanceOf(BlackMarketService.BlackMarketException.class)
+            .hasMessageContaining("No contraband");
+    }
+
+    @Test
+    void sell_failsWhenInsufficientContraband() {
+        Portfolio p = merchant();
+        p.addContrabandHolding("Iron", 2);
+        p.setContrabandAge("Iron", BlackMarketService.HOLDING_PERIOD);
+        assertThatThrownBy(() -> service.sell(p, "Iron", 5))
+            .isInstanceOf(BlackMarketService.BlackMarketException.class)
+            .hasMessageContaining("Insufficient");
+    }
 }

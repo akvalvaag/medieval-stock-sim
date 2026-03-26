@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum Guild {
     THIEVES_GUILD("Thieves' Guild",
-        "Once per 20 ticks, sell any good at 110% market price with no fee or slippage. Immune to contraband confiscation."),
+        "Once per 20 ticks, sell any good at 110% market price with no fee. Immune to contraband confiscation."),
     SCHOLARS_GUILD("Scholars' Guild",
         "Rumour truth rate raised to 78%. Tip cost reduced to 5g."),
     SEA_TRADERS("Sea Traders' Guild",
