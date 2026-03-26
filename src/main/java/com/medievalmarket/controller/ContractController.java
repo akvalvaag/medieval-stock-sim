@@ -5,9 +5,7 @@ import com.medievalmarket.service.ContractService;
 import com.medievalmarket.service.SessionRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/contract")
@@ -23,50 +21,31 @@ public class ContractController {
 
     @GetMapping
     public ResponseEntity<?> get(@RequestHeader("X-Session-Id") String sessionId) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        Portfolio p = opt.get();
-        Map<String, Object> result = new HashMap<>();
-        result.put("activeContract", p.getActiveContract());
-        result.put("pendingContractOffer", p.getPendingContractOffer());
-        return ResponseEntity.ok(result);
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
+        return ResponseEntity.ok(Map.of(
+            "activeContract", p.getActiveContract(),
+            "pendingContractOffer", p.getPendingContractOffer()
+        ));
     }
 
     @PostMapping("/accept")
     public ResponseEntity<?> accept(@RequestHeader("X-Session-Id") String sessionId) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        try {
-            Portfolio p = opt.get();
-            contractService.accept(p);
-            return ResponseEntity.ok(Map.of("activeContract", p.getActiveContract()));
-        } catch (ContractService.ContractException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
+        contractService.accept(p);
+        return ResponseEntity.ok(Map.of("activeContract", p.getActiveContract()));
     }
 
     @PostMapping("/decline")
     public ResponseEntity<?> decline(@RequestHeader("X-Session-Id") String sessionId) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        try {
-            contractService.decline(opt.get());
-            return ResponseEntity.ok(Map.of());
-        } catch (ContractService.ContractException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
+        contractService.decline(p);
+        return ResponseEntity.ok(Map.of());
     }
 
     @PostMapping("/deliver")
     public ResponseEntity<?> deliver(@RequestHeader("X-Session-Id") String sessionId) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        try {
-            Portfolio p = opt.get();
-            contractService.deliver(p);
-            return ResponseEntity.ok(Map.of("gold", p.getGold()));
-        } catch (ContractService.ContractException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
+        contractService.deliver(p);
+        return ResponseEntity.ok(Map.of("gold", p.getGold(), "holdings", p.getHoldings()));
     }
 }

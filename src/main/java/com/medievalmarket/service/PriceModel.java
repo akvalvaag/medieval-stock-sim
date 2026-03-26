@@ -12,10 +12,11 @@ public class PriceModel {
     public double computeNewPrice(Good good, double eventModifier) {
         double price = good.getCurrentPrice();
 
+        ThreadLocalRandom rng = ThreadLocalRandom.current();
+
         // 1. Random drift
         double maxDrift = 0.05 * volatilityMultiplier(good.getVolatility());
-        double drift = ThreadLocalRandom.current().nextDouble() * maxDrift
-                * (ThreadLocalRandom.current().nextBoolean() ? 1 : -1);
+        double drift = rng.nextDouble() * maxDrift * (rng.nextBoolean() ? 1 : -1);
         price *= (1 + drift);
 
         // 2. Supply/demand pressure (capped at ±5% per tick to prevent manipulation)
@@ -23,11 +24,13 @@ public class PriceModel {
         price *= (1 + pressureEffect);
 
         // 3. Event modifier
-        if (eventModifier != 0.0) {
-            price *= (1 + eventModifier);
-        }
+        price *= (1 + eventModifier);
 
-        // 4. Clamp
+        // 4. Mean reversion — gentle pull toward base price, stronger the further away
+        double deviation = (price - good.getBasePrice()) / good.getBasePrice();
+        price *= (1 - deviation * 0.015);
+
+        // 5. Clamp
         double floor = good.getBasePrice() * 0.10;
         double ceiling = good.getBasePrice() * 5.00;
         return Math.max(floor, Math.min(ceiling, price));

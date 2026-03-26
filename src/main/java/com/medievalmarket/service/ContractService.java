@@ -8,7 +8,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Component
 public class ContractService {
 
-    public static class ContractException extends RuntimeException {
+    public static class ContractException extends ServiceException {
         public ContractException(String msg) { super(msg); }
     }
 
@@ -91,8 +91,11 @@ public class ContractService {
             if (p.getHolding(e.getKey()) < e.getValue())
                 throw new ContractException("Requirements not met");
         }
-        c.getRequirements().forEach((good, qty) ->
-            p.setHolding(good, p.getHolding(good) - qty));
+        c.getRequirements().forEach((good, qty) -> {
+            int remaining = p.getHolding(good) - qty;
+            p.setHolding(good, remaining);
+            if (remaining == 0) p.clearCostBasis(good);
+        });
         double reward = c.getRewardGold();
         if (p.getGuild() == Guild.ROYAL_WARRANT) reward *= 1.6;
         p.setGold(p.getGold() + reward);
@@ -108,12 +111,12 @@ public class ContractService {
             reqs.put(good, qty);
         });
         int ticks = 40 + rng.nextInt(41); // 40–80 ticks
-        double premiumRate = 1.15 + rng.nextDouble() * 0.20; // 1.15–1.35
+        double premiumRate = 0.85 + rng.nextDouble() * 0.20; // 0.85–1.05
         int totalQty = reqs.values().stream().mapToInt(Integer::intValue).sum();
         double rewardGoodPrice = catalogue.findByName(tmpl.rewardGood()).getCurrentPrice();
         double reward = rewardGoodPrice * totalQty * premiumRate;
         reward = reward * (0.80 + rng.nextDouble() * 0.40); // ±20%
-        double penalty = Math.max(0.0, reward * 0.15);
+        double penalty = Math.max(0.0, reward * 0.25);
         return new Contract(tmpl.patronName(), tmpl.flavourText(), reqs, ticks, reward, penalty);
     }
 }

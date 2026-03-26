@@ -23,22 +23,14 @@ public class MoneylenderController {
 
     @PostMapping("/borrow")
     public ResponseEntity<?> borrow(@RequestBody BorrowRequest request) {
-        Portfolio p = registry.findById(request.sessionId()).orElse(null);
-        if (p == null) return ResponseEntity.notFound().build();
-        try {
-            moneylenderService.borrow(p, request.amount());
-        } catch (MoneylenderService.LoanException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Portfolio p = registry.findOrThrow(request.sessionId());
+        moneylenderService.borrow(p, request.amount());
         return ResponseEntity.ok(new LoanResponse(p.getLoanAmount(), p.getGold()));
     }
 
     @PostMapping("/repay")
     public ResponseEntity<?> repay(@RequestBody Map<String, String> body) {
-        String sessionId = body.get("sessionId");
-        if (sessionId == null) return ResponseEntity.badRequest().body(Map.of("error", "MISSING_SESSION"));
-        Portfolio p = registry.findById(sessionId).orElse(null);
-        if (p == null) return ResponseEntity.notFound().build();
+        Portfolio p = registry.findOrThrow(body.get("sessionId"));
         moneylenderService.repay(p);
         return ResponseEntity.ok(new LoanResponse(p.getLoanAmount(), p.getGold()));
     }

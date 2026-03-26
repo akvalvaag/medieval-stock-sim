@@ -80,7 +80,7 @@ public class MoneylenderService {
             .sum();
     }
 
-    public static class LoanException extends RuntimeException {
+    public static class LoanException extends ServiceException {
         public LoanException(String message) { super(message); }
     }
 }

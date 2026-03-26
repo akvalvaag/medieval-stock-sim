@@ -6,7 +6,9 @@ public record MarketTickPayload(
     Map<String, Double> prices,
     Map<String, List<Double>> history,
     String event,
+    String eventKey,
     List<ScoreboardEntry> scoreboard,
     String season,
-    int seasonTicksRemaining
+    int seasonTicksRemaining,
+    String tickError
 ) {}

@@ -51,7 +51,7 @@ class RumourServiceTest {
     void processTick_noDuplicateEventKeys() {
         for (int i = 0; i < 60; i++) service.processTick();
         long distinctKeys = service.getRumours().stream()
-            .map(r -> r.getEventKey()).distinct().count();
+            .map(Rumour::getEventKey).distinct().count();
         assertThat(distinctKeys).isEqualTo(service.getRumours().size());
     }
 

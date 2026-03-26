@@ -8,6 +8,7 @@ import com.medievalmarket.model.Guild;
 import com.medievalmarket.model.LimitOrder;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SessionUpdate {
     private double gold;
@@ -23,6 +24,7 @@ public class SessionUpdate {
 
     // Facility fields
     private List<FacilityType> facilities;
+    private Set<FacilityType> haltedFacilities;
 
     // Holdings and production fields
     private Map<String, Integer> holdings;
@@ -39,6 +41,7 @@ public class SessionUpdate {
     // Black market fields
     private List<BlackMarketOffer> blackMarketOffers;
     private Map<String, Integer> contrabandHoldings;
+    private Map<String, Integer> contrabandAge;
 
     // Flash message
     private String flashMessage;
@@ -54,6 +57,7 @@ public class SessionUpdate {
     public ExoticImportOffer getExoticImportOffer() { return exoticImportOffer; }
     public int getFenceCooldown() { return fenceCooldown; }
     public List<FacilityType> getFacilities() { return facilities; }
+    public Set<FacilityType> getHaltedFacilities() { return haltedFacilities; }
     public Map<String, Integer> getHoldings()       { return holdings; }
     public Map<String, Double>  getCostBasis()       { return costBasis; }
     public int getTicksUntilProduction()             { return ticksUntilProduction; }
@@ -62,6 +66,7 @@ public class SessionUpdate {
     public List<RumourDTO> getRumours() { return rumours; }
     public List<BlackMarketOffer> getBlackMarketOffers() { return blackMarketOffers; }
     public Map<String, Integer> getContrabandHoldings() { return contrabandHoldings; }
+    public Map<String, Integer> getContrabandAge()      { return contrabandAge; }
     public String getFlashMessage() { return flashMessage; }
 
     public static Builder builder() { return new Builder(); }
@@ -77,6 +82,7 @@ public class SessionUpdate {
         public Builder exoticImportOffer(ExoticImportOffer v) { su.exoticImportOffer = v; return this; }
         public Builder fenceCooldown(int v) { su.fenceCooldown = v; return this; }
         public Builder facilities(List<FacilityType> v) { su.facilities = v; return this; }
+        public Builder haltedFacilities(Set<FacilityType> v) { su.haltedFacilities = v; return this; }
         public Builder holdings(Map<String, Integer> v)  { su.holdings = v; return this; }
         public Builder costBasis(Map<String, Double> v)  { su.costBasis = v; return this; }
         public Builder ticksUntilProduction(int v)       { su.ticksUntilProduction = v; return this; }
@@ -85,6 +91,7 @@ public class SessionUpdate {
         public Builder rumours(List<RumourDTO> v) { su.rumours = v; return this; }
         public Builder blackMarketOffers(List<BlackMarketOffer> v) { su.blackMarketOffers = v; return this; }
         public Builder contrabandHoldings(Map<String, Integer> v) { su.contrabandHoldings = v; return this; }
+        public Builder contrabandAge(Map<String, Integer> v)      { su.contrabandAge = v; return this; }
         public Builder flashMessage(String v) { su.flashMessage = v; return this; }
         public SessionUpdate build() { return su; }
     }

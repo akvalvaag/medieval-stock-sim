@@ -8,7 +8,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Component
 public class RumourService {
 
-    public static class RumourException extends RuntimeException {
+    public static class RumourException extends ServiceException {
         public RumourException(String msg) { super(msg); }
     }
 

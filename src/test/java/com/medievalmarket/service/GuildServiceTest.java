@@ -154,11 +154,11 @@ class GuildServiceTest {
         Portfolio p = merchant();
         p.setGuild(Guild.SEA_TRADERS);
         double price = catalogue.findByName("Gems").getCurrentPrice() * 0.60;
-        p.setExoticImportOffer(new ExoticImportOffer("Gems", price));
+        p.setExoticImportOffer(new ExoticImportOffer("Gems", 3, price));
         double goldBefore = p.getGold();
         service.buyExoticImport(p);
-        assertThat(p.getGold()).isCloseTo(goldBefore - price, within(0.01));
-        assertThat(p.getHolding("Gems")).isEqualTo(1);
+        assertThat(p.getGold()).isCloseTo(goldBefore - price * 3, within(0.01));
+        assertThat(p.getHolding("Gems")).isEqualTo(3);
         assertThat(p.getExoticImportOffer()).isNull();
     }
 }

@@ -28,6 +28,10 @@ public class SessionRegistry {
         return portfolio;
     }
 
+    public Portfolio findOrThrow(String sessionId) {
+        return findById(sessionId).orElseThrow(() -> new ServiceException("INVALID_SESSION"));
+    }
+
     public Optional<Portfolio> findById(String sessionId) {
         Portfolio p = sessions.get(sessionId);
         if (p == null) return Optional.empty();
@@ -47,15 +51,17 @@ public class SessionRegistry {
     }
 
     public Collection<Portfolio> getHumanPortfolios() {
-        sessions.entrySet().removeIf(e -> !e.getValue().isBot() && isExpired(e.getValue()));
-        return sessions.values().stream()
-            .filter(p -> !p.isBot())
-            .collect(java.util.stream.Collectors.toList());
+        evictExpired();
+        return sessions.values().stream().filter(p -> !p.isBot()).toList();
     }
 
     public Collection<Portfolio> getAllActiveSessions() {
+        evictExpired();
+        return new ArrayList<>(sessions.values());
+    }
+
+    private void evictExpired() {
         sessions.entrySet().removeIf(e -> !e.getValue().isBot() && isExpired(e.getValue()));
-        return new java.util.ArrayList<>(sessions.values());
     }
 
     private boolean isExpired(Portfolio p) {

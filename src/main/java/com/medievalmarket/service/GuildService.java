@@ -15,7 +15,7 @@ public class GuildService {
         this.catalogue = catalogue;
     }
 
-    public static class GuildException extends RuntimeException {
+    public static class GuildException extends ServiceException {
         public GuildException(String msg) { super(msg); }
     }
 
@@ -34,9 +34,11 @@ public class GuildService {
                 p.setGold(p.getGold() + stipend);
             }
             if (p.getGuild() == Guild.SEA_TRADERS) {
-                String rareName = RARE_GOODS.get(ThreadLocalRandom.current().nextInt(RARE_GOODS.size()));
+                ThreadLocalRandom rng = ThreadLocalRandom.current();
+                String rareName = RARE_GOODS.get(rng.nextInt(RARE_GOODS.size()));
+                int qty = 1 + rng.nextInt(10); // 1–10 units
                 double price = catalogue.findByName(rareName).getCurrentPrice() * 0.60;
-                p.setExoticImportOffer(new ExoticImportOffer(rareName, price));
+                p.setExoticImportOffer(new ExoticImportOffer(rareName, qty, price));
             }
         }
         p.setLastSeenSeason(currentSeason);
@@ -78,10 +80,11 @@ public class GuildService {
     public void buyExoticImport(Portfolio p) {
         ExoticImportOffer offer = p.getExoticImportOffer();
         if (offer == null) throw new GuildException("No exotic import available");
-        if (p.getGold() < offer.discountedPrice())
-            throw new GuildException("Insufficient funds");
-        p.setGold(p.getGold() - offer.discountedPrice());
-        p.setHolding(offer.goodName(), p.getHolding(offer.goodName()) + 1);
+        double totalCost = offer.discountedPrice() * offer.quantity();
+        if (p.getGold() < totalCost) throw new GuildException("Insufficient funds");
+        p.setGold(p.getGold() - totalCost);
+        p.updateCostBasis(offer.goodName(), offer.quantity(), offer.discountedPrice());
+        p.setHolding(offer.goodName(), p.getHolding(offer.goodName()) + offer.quantity());
         p.setExoticImportOffer(null);
     }
 

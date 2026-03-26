@@ -40,8 +40,8 @@ class TradeServiceTest {
     void buyDeductsGoldWithFee() {
         Portfolio p = noble(); // 1000g start
         service.buy(p, "Iron", 1);
-        // Iron at 40g + 3% fee = 41.2g
-        assertThat(p.getGold()).isCloseTo(1000.0 - 41.2, within(0.01));
+        // Iron at 40g + 0.5% fee = 40.2g
+        assertThat(p.getGold()).isCloseTo(1000.0 - 40.2, within(0.01));
     }
 
     @Test
@@ -65,8 +65,8 @@ class TradeServiceTest {
         service.buy(p, "Iron", 2);
         double goldAfterBuy = p.getGold();
         service.sell(p, "Iron", 1);
-        // Sell 1 Iron at 40g with 3% fee = 38.8g
-        assertThat(p.getGold()).isCloseTo(goldAfterBuy + 38.8, within(0.01));
+        // Sell 1 Iron at 40g with 0.5% fee = 39.8g
+        assertThat(p.getGold()).isCloseTo(goldAfterBuy + 39.8, within(0.01));
         assertThat(p.getHolding("Iron")).isEqualTo(1);
     }
 
@@ -77,8 +77,8 @@ class TradeServiceTest {
         service.buy(p, "Iron", 1);
         double goldAfterBuy = p.getGold();
         service.sell(p, "Iron", 1);
-        // fee first: 40 * 0.97 = 38.8, then bonus: 38.8 * 1.02 = 39.576
-        assertThat(p.getGold()).isCloseTo(goldAfterBuy + 39.576, within(0.01));
+        // fee first: 40 * 0.995 = 39.8, then bonus: 39.8 * 1.02 = 40.596
+        assertThat(p.getGold()).isCloseTo(goldAfterBuy + 40.596, within(0.01));
     }
 
     @Test

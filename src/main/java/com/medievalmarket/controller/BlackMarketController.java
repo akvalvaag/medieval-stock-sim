@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/blackmarket")
@@ -23,9 +22,7 @@ public class BlackMarketController {
 
     @GetMapping
     public ResponseEntity<?> get(@RequestHeader("X-Session-Id") String sessionId) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        Portfolio p = opt.get();
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
         return ResponseEntity.ok(Map.of(
             "offers", p.getBlackMarketOffers() == null ? List.of() : p.getBlackMarketOffers(),
             "contrabandHoldings", p.getContrabandHoldings()
@@ -35,20 +32,21 @@ public class BlackMarketController {
     @PostMapping("/buy")
     public ResponseEntity<?> buy(@RequestHeader("X-Session-Id") String sessionId,
                                  @RequestBody Map<String, Object> body) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
         String goodName = (String) body.get("goodName");
-        Object qtyObj = body.get("quantity");
-        if (goodName == null || qtyObj == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Missing goodName or quantity"));
-        }
-        int qty = ((Number) qtyObj).intValue();
-        try {
-            blackMarketService.buy(opt.get(), goodName, qty);
-            Portfolio p = opt.get();
-            return ResponseEntity.ok(Map.of("gold", p.getGold(), "contrabandHoldings", p.getContrabandHoldings()));
-        } catch (BlackMarketService.BlackMarketException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        int qty = ((Number) body.get("quantity")).intValue();
+        blackMarketService.buy(p, goodName, qty);
+        List<Object> offers = p.getBlackMarketOffers() == null ? List.of() : List.copyOf(p.getBlackMarketOffers());
+        return ResponseEntity.ok(Map.of("gold", p.getGold(), "contrabandHoldings", p.getContrabandHoldings(), "blackMarketOffers", offers));
+    }
+
+    @PostMapping("/sell")
+    public ResponseEntity<?> sell(@RequestHeader("X-Session-Id") String sessionId,
+                                  @RequestBody Map<String, Object> body) {
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
+        String goodName = (String) body.get("goodName");
+        int qty = ((Number) body.get("quantity")).intValue();
+        blackMarketService.sell(p, goodName, qty);
+        return ResponseEntity.ok(Map.of("gold", p.getGold(), "contrabandHoldings", p.getContrabandHoldings()));
     }
 }

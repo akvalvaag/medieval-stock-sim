@@ -23,24 +23,16 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<?> addOrder(@RequestBody AddOrderRequest request) {
-        Portfolio p = registry.findById(request.sessionId()).orElse(null);
-        if (p == null) return ResponseEntity.notFound().build();
-        try {
-            limitOrderService.addOrder(p, request.goodName(), request.direction(),
-                request.quantity(), request.targetPrice());
-        } catch (LimitOrderService.LimitOrderException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "UNKNOWN_GOOD"));
-        }
+        Portfolio p = registry.findOrThrow(request.sessionId());
+        limitOrderService.addOrder(p, request.goodName(), request.direction(),
+            request.quantity(), request.targetPrice());
         return ResponseEntity.ok(new OrderResponse(p.getLimitOrders(), p.getGold()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> cancelOrder(@PathVariable String id,
                                          @RequestParam String sessionId) {
-        Portfolio p = registry.findById(sessionId).orElse(null);
-        if (p == null) return ResponseEntity.notFound().build();
+        Portfolio p = registry.findOrThrow(sessionId);
         p.removeLimitOrder(id);
         return ResponseEntity.ok(new OrderResponse(p.getLimitOrders(), p.getGold()));
     }

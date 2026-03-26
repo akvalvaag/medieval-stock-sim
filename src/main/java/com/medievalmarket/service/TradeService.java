@@ -19,8 +19,7 @@ public class TradeService {
         validateQuantity(quantity);
         Good good = catalogue.findByName(goodName);
         double feeRate = portfolio.getPlayerClass().getFeeRate();
-        double slippage = quantity >= 10 ? Math.min(quantity * 0.001, 0.05) : 0.0;
-        double cost = good.getCurrentPrice() * quantity * (1 + feeRate + slippage);
+        double cost = good.getCurrentPrice() * quantity * (1 + feeRate);
 
         synchronized (portfolio) {
             if (portfolio.getGold() < cost) throw new TradeException("INSUFFICIENT_FUNDS");
@@ -45,8 +44,7 @@ public class TradeService {
 
             double saleValue = good.getCurrentPrice() * quantity;
             double feeRate = portfolio.getPlayerClass().getFeeRate();
-            double slippage = quantity >= 10 ? Math.min(quantity * 0.001, 0.05) : 0.0;
-            saleValue *= (1 - feeRate - slippage);
+            saleValue *= (1 - feeRate);
 
             if (portfolio.getPlayerClass() == PlayerClass.MINER
                     && "Mining".equals(good.getCategory())) {
@@ -69,7 +67,7 @@ public class TradeService {
         if (quantity < 1) throw new TradeException("INVALID_QUANTITY");
     }
 
-    public static class TradeException extends RuntimeException {
+    public static class TradeException extends ServiceException {
         public TradeException(String message) { super(message); }
     }
 }

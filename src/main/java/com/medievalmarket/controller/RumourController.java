@@ -1,14 +1,13 @@
 package com.medievalmarket.controller;
 
 import com.medievalmarket.model.Portfolio;
-import com.medievalmarket.model.Rumour;
 import com.medievalmarket.service.RumourService;
 import com.medievalmarket.service.SessionRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/rumours")
@@ -24,12 +23,10 @@ public class RumourController {
 
     @GetMapping
     public ResponseEntity<?> getRumours(@RequestHeader("X-Session-Id") String sessionId) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        Portfolio p = opt.get();
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
         List<Map<String, Object>> rumours = rumourService.getRumours().stream()
             .map(r -> {
-                Map<String, Object> dto = new java.util.HashMap<>();
+                Map<String, Object> dto = new HashMap<>();
                 dto.put("id", r.getId());
                 dto.put("text", r.getText());
                 dto.put("eventKey", r.getEventKey());
@@ -44,13 +41,8 @@ public class RumourController {
     @PostMapping("/{id}/tip")
     public ResponseEntity<?> tip(@RequestHeader("X-Session-Id") String sessionId,
                                  @PathVariable String id) {
-        Optional<Portfolio> opt = sessionRegistry.findById(sessionId);
-        if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "INVALID_SESSION"));
-        try {
-            String result = rumourService.tip(opt.get(), id);
-            return ResponseEntity.ok(Map.of("tipResult", result, "gold", opt.get().getGold()));
-        } catch (RumourService.RumourException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        Portfolio p = sessionRegistry.findOrThrow(sessionId);
+        String result = rumourService.tip(p, id);
+        return ResponseEntity.ok(Map.of("tipResult", result, "gold", p.getGold()));
     }
 }

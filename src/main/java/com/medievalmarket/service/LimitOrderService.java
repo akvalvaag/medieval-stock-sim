@@ -90,7 +90,7 @@ public class LimitOrderService {
         return order;
     }
 
-    public static class LimitOrderException extends RuntimeException {
+    public static class LimitOrderException extends ServiceException {
         public LimitOrderException(String message) { super(message); }
     }
 }

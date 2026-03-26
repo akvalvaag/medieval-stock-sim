@@ -5,6 +5,7 @@ import com.medievalmarket.dto.MarketTickPayload;
 import com.medievalmarket.dto.SessionUpdate;
 import com.medievalmarket.model.Good;
 import com.medievalmarket.model.Portfolio;
+import com.medievalmarket.model.Rumour;
 import com.medievalmarket.model.ScoreboardEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,6 @@ public class MarketEngine {
     private final BotService botService;
     private final LimitOrderService limitOrderService;
     private final MoneylenderService moneylenderService;
-    private final WarehousingService warehousingService;
     private final GuildService guildService;
     private final FacilityService facilityService;
     private final ContractService contractService;
@@ -41,7 +41,7 @@ public class MarketEngine {
                         SessionRegistry sessionRegistry, ScoreboardService scoreboardService,
                         SimpMessagingTemplate messagingTemplate, SeasonEngine seasonEngine,
                         BotService botService, LimitOrderService limitOrderService,
-                        MoneylenderService moneylenderService, WarehousingService warehousingService,
+                        MoneylenderService moneylenderService,
                         GuildService guildService, FacilityService facilityService,
                         ContractService contractService, RumourService rumourService,
                         BlackMarketService blackMarketService) {
@@ -56,7 +56,6 @@ public class MarketEngine {
         this.botService = botService;
         this.limitOrderService = limitOrderService;
         this.moneylenderService = moneylenderService;
-        this.warehousingService = warehousingService;
         this.guildService = guildService;
         this.facilityService = facilityService;
         this.contractService = contractService;
@@ -73,8 +72,8 @@ public class MarketEngine {
 
             // 2. Maybe fire an event
             Set<String> boostedKeys = rumourService.getRumours().stream()
-                .filter(r -> r.isTrue())
-                .map(r -> r.getEventKey())
+                .filter(Rumour::isTrue)
+                .map(Rumour::getEventKey)
                 .collect(Collectors.toSet());
             EventEngine.FiredEvent event = eventEngine.maybeFireEvent(boostedKeys);
             Map<String, Double> eventModifiers = event != null ? event.modifiers() : Map.of();
@@ -100,19 +99,15 @@ public class MarketEngine {
             Collection<Portfolio> humans = sessionRegistry.getHumanPortfolios();
             Map<String, List<LimitOrderFill>> fills = limitOrderService.processAll(humans);
             moneylenderService.processAll(humans);
-            warehousingService.processAll(humans);
 
-            // 9. Process all 5 new services per market tick
+            // 9. Per-session services (guild offers, black market flash messages)
             String currentSeason = seasonEngine.getCurrentSeason();
             String firedEventKey = event != null ? event.key() : null;
-            // Guild and BlackMarket return per-portfolio data (flash messages), call in loop
             for (Portfolio p : humans) {
                 guildService.processTick(p, currentSeason);
                 String flashMsg = blackMarketService.processTick(p);
                 if (flashMsg != null) p.setLastFlashMessage(flashMsg);
             }
-            // FacilityService and ContractService use processAll(); RumourService uses processTick()
-            // All three are called exactly once per market tick
             facilityService.processAll(humans);
             contractService.processAll(humans);
             rumourService.processTick();
@@ -123,7 +118,7 @@ public class MarketEngine {
                 rumourService.onEventFired(firedEventKey);
             }
             Set<String> activeRumourIds = rumourService.getRumours().stream()
-                .map(r -> r.getId())
+                .map(Rumour::getId)
                 .collect(Collectors.toSet());
             humans.forEach(p -> p.removeTipResultsNotIn(activeRumourIds));
 
@@ -136,13 +131,16 @@ public class MarketEngine {
                 prices,
                 priceHistory.getAllHistory(),
                 event != null ? event.message() : null,
+                firedEventKey,
                 scoreboard,
                 seasonEngine.getCurrentSeason(),
-                seasonEngine.getTicksRemaining()
+                seasonEngine.getTicksRemaining(),
+                null
             );
             messagingTemplate.convertAndSend("/topic/market", payload);
 
             // 12. Push per-session updates
+            int ticksUntilProduction = facilityService.getTicksUntilProduction();
             for (Portfolio p : humans) {
                 // Build rumour DTOs (omit isTrue — client must not know)
                 List<SessionUpdate.RumourDTO> rumourDTOs = rumourService.getRumours().stream()
@@ -160,14 +158,16 @@ public class MarketEngine {
                     .exoticImportOffer(p.getExoticImportOffer())
                     .fenceCooldown(p.getFenceCooldown())
                     .facilities(p.getFacilities())
+                    .haltedFacilities(p.getHaltedFacilities())
                     .holdings(p.getHoldings())
                     .costBasis(p.getAllCostBasis())
-                    .ticksUntilProduction(facilityService.getTicksUntilProduction())
+                    .ticksUntilProduction(ticksUntilProduction)
                     .activeContract(p.getActiveContract())
                     .pendingContractOffer(p.getPendingContractOffer())
                     .rumours(rumourDTOs)
                     .blackMarketOffers(p.getBlackMarketOffers())
                     .contrabandHoldings(p.getContrabandHoldings())
+                    .contrabandAge(p.getContrabandAges())
                     .flashMessage(p.getLastFlashMessage())
                     .build();
                 messagingTemplate.convertAndSendToUser(p.getSessionId(), "/queue/updates", update);
@@ -175,6 +175,8 @@ public class MarketEngine {
             }
         } catch (Exception e) {
             log.error("Market tick failed", e);
+            messagingTemplate.convertAndSend("/topic/market",
+                new MarketTickPayload(null, null, null, null, null, null, 0, e.getMessage()));
         }
     }
 }
