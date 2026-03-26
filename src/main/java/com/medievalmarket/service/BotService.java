@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class BotService {
 
-    private static final int BOT_COUNT = 5;
+    private static final int BOT_COUNT = 50;
     private static final int TRADE_EVERY_N_TICKS = 3;
 
     private final SessionRegistry sessionRegistry;
@@ -63,7 +63,7 @@ public class BotService {
                         tradeService.sell(bot, good.getName(), 1);
                     }
                 }
-            } catch (TradeService.TradeException | IllegalArgumentException ignored) {
+            } catch (ServiceException ignored) {
                 // Bot simply skips this tick if it can't trade
             }
         }

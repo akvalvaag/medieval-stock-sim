@@ -3,18 +3,19 @@ package com.medievalmarket.service;
 import com.medievalmarket.model.*;
 import org.springframework.stereotype.Component;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class FacilityService {
 
     private final GoodsCatalogue catalogue;
-    private volatile int tickCount = 0;
+    private final AtomicInteger tickCount = new AtomicInteger(0);
 
     public FacilityService(GoodsCatalogue catalogue) {
         this.catalogue = catalogue;
     }
 
-    public static class FacilityException extends RuntimeException {
+    public static class FacilityException extends ServiceException {
         public FacilityException(String msg) { super(msg); }
     }
 
@@ -37,27 +38,26 @@ public class FacilityService {
     }
 
     public int getTicksUntilProduction() {
-        return 5 - (tickCount % 5);
+        return 5 - (tickCount.get() % 5);
         // Returns 5 when production just fired (tickCount % 5 == 0); counts down 4,3,2,1 otherwise.
     }
 
     /** For tests — increments counter once per call. */
     public void processTick(Portfolio p) {
-        tickCount++;
-        if (tickCount % 5 != 0) return;
+        if (tickCount.incrementAndGet() % 5 != 0) return;
         runProduction(p);
     }
 
     /** For MarketEngine — increments counter ONCE per market tick, runs all portfolios. */
     public void processAll(Collection<Portfolio> portfolios) {
-        tickCount++;
-        if (tickCount % 5 != 0) return;
+        if (tickCount.incrementAndGet() % 5 != 0) return;
         portfolios.forEach(this::runProduction);
     }
 
     private void runProduction(Portfolio p) {
         boolean doubled = p.getGuild() == Guild.ALCHEMISTS_SOCIETY;
         for (FacilityType facility : p.getFacilities()) {
+            if (p.isHalted(facility)) continue;
             if (!hasInputs(p, facility)) continue;
             consumeInputs(p, facility);
             int outputQty = facility.getOutputQty() * (doubled ? 2 : 1);

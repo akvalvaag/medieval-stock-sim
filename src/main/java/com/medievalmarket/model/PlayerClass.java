@@ -2,8 +2,8 @@ package com.medievalmarket.model;
 
 public enum PlayerClass {
     MERCHANT(500.0, 0.0),
-    MINER   (350.0, 0.03),
-    NOBLE   (1000.0,0.03);
+    MINER   (350.0, 0.005),
+    NOBLE   (1000.0,0.005);
 
     private final double startGold;
     private final double feeRate;
