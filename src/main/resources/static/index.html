@@ -89,13 +89,13 @@
     .portfolio { padding: 1rem; border-bottom: 1px solid #2a2a4e; }
     .portfolio h2 { margin-bottom: .6rem; }
     .gold-display { font-size: 1.4rem; font-weight: bold; color: #fbbf24; margin-bottom: .2rem; }
-    .last-fee-tag { font-size: .72rem; color: #f87171; margin-bottom: .4rem; }
     .holding-block { margin-bottom: .55rem; }
     .holding-name { font-size: .82rem; color: #cbd5e1; }
     .holding-pnl { font-size: .74rem; margin-top: 1px; }
     .pnl-positive { color: #4ade80; }
     .pnl-negative { color: #f87171; }
     .pnl-neutral { color: #6b7280; }
+    .trade-fee-note { font-size: .7rem; color: #888; margin-top: .4rem; }
     .net-worth { margin-top: .6rem; padding-top: .6rem; border-top: 1px solid #2a2a4e; font-size: .9rem; }
     .net-worth strong { color: #4ade80; }
 
@@ -169,6 +169,9 @@
     .panel-exotic { border-color: #0ea5e9; background: #0c1a25; }
     .panel-warning { border-color: #d97706; background: #1c1200; }
     .rumour-card { border: 1px solid #374151; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+    .rumour-ttl { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    .rumour-ttl-bar-bg { flex: 1; height: 4px; background: #374151; border-radius: 2px; }
+    .rumour-ttl-bar { height: 4px; border-radius: 2px; transition: width .4s; }
     .reliable { color: #22c55e; font-weight: bold; }
     .dubious { color: #ef4444; font-weight: bold; }
     .met { color: #22c55e; }
@@ -176,7 +179,7 @@
     .urgent { color: #ef4444; font-weight: bold; }
     .warning { color: #f59e0b; }
     .contraband-section { margin-top: 12px; border-top: 1px solid #d97706; padding-top: 8px; }
-    .contraband-row { color: #fbbf24; }
+    .contraband-row { color: #fbbf24; display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
     .btn-warning { background: #d97706; color: #fff; }
     .btn-primary { background: #4c1d95; color: #ddd6fe; border-radius: 5px; padding: 5px 11px; font-size: .82rem; }
     .btn-primary:hover:not(:disabled) { background: #6d28d9; }
@@ -187,7 +190,7 @@
     .btn-sm:disabled { opacity: .4; cursor: not-allowed; }
     .btn-xs { padding: 2px 6px; font-size: .7rem; border-radius: 4px; }
     .btn-row { display: flex; gap: .5rem; margin-top: .6rem; }
-    .muted { color: #555; font-size: .8rem; }
+    .muted { color: #888; font-size: .8rem; }
     .flavour { font-style: italic; color: #9ca3af; font-size: 0.875rem; }
     .facility-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
     .recipe { font-size: 0.75rem; color: #6b7280; }
@@ -205,7 +208,9 @@
     .demolish-confirm { display: flex; justify-content: space-between; align-items: center; background: #2a1a1a; border: 1px solid #f8717155; border-radius: 4px; padding: 5px 8px; margin-top: 6px; font-size: .78rem; color: #f87171; gap: 8px; }
     .status-active { color: #4ade80; font-size: .75rem; }
     .status-idle   { color: #f87171; font-size: .75rem; }
-    .section-label { color: #555; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; margin: 10px 0 4px; }
+    .status-halted { color: #f59e0b; font-size: .75rem; }
+    .facility-halted { border-left-color: #f59e0b; }
+    .section-label { color: #888; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; margin: 10px 0 4px; }
   </style>
 </head>
 <body>
@@ -245,12 +250,12 @@
 
     <!-- History ticker -->
     <div class="ticker">
-      <span v-for="(evt, i) in events.slice(0, 5)" :key="i">&#x1F4AF; {{ evt }}</span>
-      <span v-if="events.length === 0" style="color:#555">Awaiting market news…</span>
+      <span v-for="(evt, i) in events.slice(0, 5)" :key="i">{{ evt }}</span>
+      <span v-if="events.length === 0" style="color:#888">Awaiting market news…</span>
     </div>
 
     <div style="display:flex; align-items:center; gap:.8rem; padding:.3rem 1rem; background:#0f0f1a; border-bottom:1px solid #2a2a4e;">
-      <div class="season-badge">
+      <div class="season-badge" :title="seasonTooltip">
         <span>{{ seasonIcon }}</span>
         <strong>{{ session.season }}</strong>
         <div class="season-progress">
@@ -265,7 +270,7 @@
       <div class="market-panel">
         <!-- Event banner -->
         <div v-if="eventBanner" class="event-banner" :class="{ 'event-banner-fade': eventBannerFading }">
-          &#x26A1; {{ eventBanner }}
+          {{ eventBanner }}
         </div>
         <div v-if="alertMessage" class="event-banner alert-banner">🔔 {{ alertMessage }}</div>
         <div v-if="achievementToast" class="event-banner achievement-banner">{{ achievementToast }}</div>
@@ -357,7 +362,6 @@
         <div class="portfolio">
           <h2 class="section-title">{{ session.name }} <span style="color:#888;font-weight:400;text-transform:none;font-size:.7rem">({{ session.playerClass }})</span><span v-if="guild" class="guild-badge">{{ guild.displayName }}</span></h2>
           <div class="gold-display">{{ fmt(session.gold) }} gold</div>
-          <div v-if="lastFee.amount" class="last-fee-tag">fee: {{ fmt(lastFee.amount) }}g</div>
 
           <!-- Holdings with P&L -->
           <div v-for="(qty, name) in session.holdings" :key="name" class="holding-block">
@@ -366,7 +370,7 @@
               <template v-if="session.costBasis[name] != null">
                 Avg cost: {{ fmt(session.costBasis[name]) }}g &rarr; Current: {{ fmt(prices[name] || 0) }}g
                 ({{ pnlSign(name) }}{{ fmt(Math.abs(pnlPerUnit(name))) }}g
-                {{ pnlSign(name) }}{{ fmt(Math.abs(pnlPct(name))) }}%)
+                {{ pnlSign(name) }}{{ fmt(Math.abs(pnlPct(name))) }}% after fees)
               </template>
               <template v-else>
                 n/a
@@ -374,7 +378,8 @@
             </div>
           </div>
 
-          <div v-if="Object.keys(session.holdings).length === 0" style="color:#555;font-size:.8rem">No holdings</div>
+          <div v-if="Object.keys(session.holdings).length === 0" style="color:#888;font-size:.8rem">No holdings</div>
+          <div class="trade-fee-note">Trade fee: {{ session.playerClass === 'MERCHANT' ? '0%' : '0.5%' }} per leg{{ session.playerClass === 'MERCHANT' ? ' (merchant bonus)' : '' }}</div>
           <div class="net-worth">Net worth: <strong>{{ fmt(netWorth) }}g</strong></div>
           <!-- Net worth chart -->
           <div class="nw-chart-wrap" v-if="netWorthHistory.length > 1">
@@ -384,7 +389,19 @@
           <div v-if="Object.keys(contrabandHoldings).length > 0" class="contraband-section">
             <h4>Contraband ⚠️</h4>
             <div v-for="(qty, good) in contrabandHoldings" :key="good" class="contraband-row">
-              {{ good }}: {{ qty }}
+              <span>{{ good }} × {{ qty }}
+                <span v-if="(contrabandAge[good] || 0) < 5" class="muted" style="font-size:.75rem;margin-left:4px">
+                  🔒 {{ 5 - (contrabandAge[good] || 0) }} ticks
+                </span>
+              </span>
+              <span>
+                <button class="btn btn-sm" style="margin-left:6px"
+                  :disabled="(contrabandAge[good] || 0) < 5"
+                  @click="contrabandTrade('sell', good, 1)">Sell 1</button>
+                <button class="btn btn-sm" style="margin-left:4px"
+                  :disabled="(contrabandAge[good] || 0) < 5"
+                  @click="contrabandTrade('sell', good, qty)">Sell all</button>
+              </span>
             </div>
           </div>
         </div>
@@ -452,8 +469,8 @@
         <!-- Exotic Import Panel -->
         <div v-if="guild && guild.name === 'SEA_TRADERS' && exoticImportOffer" class="panel panel-exotic">
           <h4>🚢 Exotic Import Available!</h4>
-          <p>{{ exoticImportOffer.goodName }} — {{ exoticImportOffer.discountedPrice.toFixed(1) }}g</p>
-          <button class="btn btn-primary" @click="buyExoticImport">Buy</button>
+          <p>{{ exoticImportOffer.goodName }} × {{ exoticImportOffer.quantity }} — {{ exoticImportOffer.discountedPrice.toFixed(1) }}g each ({{ (exoticImportOffer.discountedPrice * exoticImportOffer.quantity).toFixed(1) }}g total)</p>
+          <button class="btn btn-primary" @click="buyExoticImport">Buy all</button>
         </div>
 
         <!-- Facilities Panel -->
@@ -469,21 +486,26 @@
 
           <div v-for="card in ownedFacilityCards" :key="card.type"
                class="facility-card"
-               :class="card.canProduce ? 'facility-active' : 'facility-idle'">
+               :class="card.halted ? 'facility-halted' : card.canProduce ? 'facility-active' : 'facility-idle'">
             <div class="facility-card-top">
               <span><strong>{{ card.ft.label }}</strong> <span style="color:#f59e0b">×{{ card.count }}</span></span>
-              <span :class="card.canProduce ? 'status-active' : 'status-idle'">
-                ● {{ card.canProduce ? 'Active' : 'Idle' }}
+              <span :class="card.halted ? 'status-halted' : card.canProduce ? 'status-active' : 'status-idle'">
+                ● {{ card.halted ? 'Halted' : card.canProduce ? 'Active' : 'Idle' }}
               </span>
             </div>
             <div class="facility-recipe">{{ card.ft.recipe }}</div>
             <div v-if="card.canProduce" class="facility-output">
               → producing {{ card.outputQty }} {{ card.ft.outputGood }} next cycle
             </div>
-            <div v-else v-for="m in card.missing" :key="m" class="facility-missing">
+            <div v-else-if="!card.halted" v-for="m in card.missing" :key="m" class="facility-missing">
               ⚠ Missing: {{ m }}
             </div>
             <div class="facility-actions">
+              <button class="btn btn-sm"
+                      :style="card.halted ? 'color:#f59e0b;border-color:#f59e0b' : ''"
+                      @click="toggleHalt(card.type)">
+                {{ card.halted ? '▶ Resume' : '⏸ Halt' }}
+              </button>
               <button class="btn btn-sm" style="color:#f87171;border-color:#f87171"
                       @click="toggleDemolishConfirm(card.type)">Demolish</button>
               <button class="btn btn-sm"
@@ -553,7 +575,16 @@
           <p v-if="rumours.length === 0" class="muted">No rumours circulating.</p>
           <div v-for="r in rumours" :key="r.id" class="rumour-card">
             <p>{{ r.text }}</p>
-            <p class="muted">⏳ {{ r.ticksRemaining }} ticks</p>
+            <div class="rumour-ttl">
+              <span class="muted" style="font-size:.72rem;white-space:nowrap">⏳ {{ r.ticksRemaining }}t</span>
+              <div class="rumour-ttl-bar-bg">
+                <div class="rumour-ttl-bar"
+                     :style="{
+                       width: (r.ticksRemaining / 30 * 100) + '%',
+                       background: r.ticksRemaining > 15 ? '#4ade80' : r.ticksRemaining > 7 ? '#f59e0b' : '#f87171'
+                     }"></div>
+              </div>
+            </div>
             <span v-if="r.confirmed" class="reliable">✓ Confirmed!</span>
             <span v-else-if="r.tipResult" :class="r.tipResult === 'RELIABLE' ? 'reliable' : 'dubious'">
               {{ r.tipResult === 'RELIABLE' ? '✓ Seems reliable' : '✗ Seems dubious' }}
@@ -570,7 +601,10 @@
           <h3>⚠️ Black Market</h3>
           <div v-for="offer in blackMarketOffers" :key="offer.goodName" class="bm-row">
             <span>{{ offer.goodName }} ({{ offer.availableQty }} avail) — {{ offer.discountedPrice.toFixed(1) }}g ea</span>
-            <button class="btn btn-sm btn-warning" @click="buyContraband(offer.goodName, 1)">Buy 1</button>
+            <span>
+              <button class="btn btn-sm btn-warning" :disabled="session.gold < offer.discountedPrice" @click="contrabandTrade('buy', offer.goodName, 1)">Buy 1</button>
+              <button class="btn btn-sm btn-warning" style="margin-left:4px" :disabled="session.gold < offer.discountedPrice" @click="contrabandTrade('buy', offer.goodName, offer.availableQty)">Buy all</button>
+            </span>
           </div>
         </div>
 
@@ -586,7 +620,7 @@
               {{ trendIcon(entry.trending) }}{{ entry.trending !== 'NEUTRAL' ? ' ' + fmt(Math.abs(entry.trend)) : '' }}
             </span>
           </div>
-          <div v-if="scoreboard.length === 0" style="color:#555;font-size:.8rem">Waiting for players…</div>
+          <div v-if="scoreboard.length === 0" style="color:#888;font-size:.8rem">Waiting for players…</div>
         </div>
       </div>
     </div>
@@ -659,7 +693,7 @@ createApp({
     const events    = ref([]);
     const scoreboard = ref([]);
     const reconnecting = ref(false);
-    const lastFee = reactive({ amount: 0, _timer: null });
+    const tradeFeeRate = () => session.playerClass === 'MERCHANT' ? 0.0 : 0.005;
 
     // ── Expansion fields ──────────────────────────────────────────────────────
     const guild = ref(null);
@@ -667,11 +701,13 @@ createApp({
     const exoticImportOffer = ref(null);
     const fenceCooldown = ref(0);
     const facilities = ref([]);
+    const haltedFacilities = ref([]);
     const activeContract = ref(null);
     const pendingContractOffer = ref(null);
     const rumours = ref([]);
     const blackMarketOffers = ref(null);
     const contrabandHoldings = ref({});
+    const contrabandAge = ref({});
     const facilityTypes = [
       { type: 'MILL',       label: 'Mill',       cost: 150,
         inputs: [['Grain',3],['Salt',1]],         outputGood: 'Bread',   outputQty: 2,
@@ -746,17 +782,18 @@ createApp({
     const pnlPerUnit = name => {
       const basis = session.costBasis[name];
       if (basis == null) return 0;
-      return (prices[name] || 0) - basis;
+      const fee = tradeFeeRate();
+      return (prices[name] || 0) * (1 - fee) - basis * (1 + fee);
     };
     const pnlPct = name => {
       const basis = session.costBasis[name];
       if (!basis) return 0;
-      return ((prices[name] || 0) - basis) / basis * 100;
+      const fee = tradeFeeRate();
+      return pnlPerUnit(name) / (basis * (1 + fee)) * 100;
     };
     const pnlClass = name => {
-      const basis = session.costBasis[name];
-      if (basis == null) return 'pnl-neutral';
-      const delta = (prices[name] || 0) - basis;
+      if (session.costBasis[name] == null) return 'pnl-neutral';
+      const delta = pnlPerUnit(name);
       if (delta > 0) return 'pnl-positive';
       if (delta < 0) return 'pnl-negative';
       return 'pnl-neutral';
@@ -764,8 +801,8 @@ createApp({
     const pnlSign = name => pnlPerUnit(name) >= 0 ? '+' : '-';
 
     // ── Trade affordability helpers ───────────────────────────────────────────
-    // feeMultiplier: Merchant pays no fee (1.00), others pay 3% on buy
-    const feeMultiplier = () => session.playerClass === 'MERCHANT' ? 1.00 : 1.03;
+    // feeMultiplier: Merchant pays no fee (1.00), others pay 0.5% on buy
+    const feeMultiplier = () => session.playerClass === 'MERCHANT' ? 1.00 : 1.005;
 
     const canBuy = (name, qty) => {
       const price = prices[name] || 0;
@@ -775,16 +812,7 @@ createApp({
     const buyMax = name => {
       const price = prices[name] || 0;
       if (price <= 0) return 0;
-      const feeRate = feeMultiplier() - 1;
-      // Start with no-slippage estimate, then reduce until cost fits
-      // (server applies slippage = min(qty*0.001, 0.05) for qty >= 10)
-      let qty = Math.floor(session.gold / (price * feeMultiplier()));
-      while (qty > 0) {
-        const slippage = qty >= 10 ? Math.min(qty * 0.001, 0.05) : 0;
-        if (price * qty * (1 + feeRate + slippage) <= session.gold) break;
-        qty--;
-      }
-      return qty;
+      return Math.floor(session.gold / (price * feeMultiplier()));
     };
 
     const canSell = (name, qty) => {
@@ -855,6 +883,13 @@ createApp({
     const seasonProgress = computed(() =>
       Math.round((1 - session.seasonTicksRemaining / 60) * 100)
     );
+    const SEASON_TIPS = {
+      SPRING: '↑ Grain, Wool, Livestock, Fish\n↓ Coal, Candles',
+      SUMMER: '↑ Spices, Herbs, Ale, Cloth\n↓ Grain',
+      AUTUMN: '↑ Grain, Timber, Ale, Coal, Leather',
+      WINTER: '↑ Coal, Candles, Salt, Spices, Grain\n↓ Fish, Livestock',
+    };
+    const seasonTooltip = computed(() => SEASON_TIPS[session.season] || '');
 
     // ── Holdings helper ───────────────────────────────────────────────────────
     const getHolding = (good) => (session.holdings && session.holdings[good]) || 0;
@@ -867,16 +902,17 @@ createApp({
       for (const f of facilities.value) counts[f] = (counts[f] || 0) + 1;
       return Object.entries(counts).map(([type, count]) => {
         const ft = facilityTypes.find(t => t.type === type);
-        const canProduce = ft.inputs.every(([good, qty]) =>
+        const halted = haltedFacilities.value.includes(type);
+        const canProduce = !halted && ft.inputs.every(([good, qty]) =>
           (session.holdings[good] || 0) >= qty);
-        const missing = ft.inputs
+        const missing = halted ? [] : ft.inputs
           .filter(([good, qty]) => (session.holdings[good] || 0) < qty)
           .map(([good, qty]) => {
             const have = session.holdings[good] || 0;
             return `${qty - have} ${good} (have ${have})`;
           });
         const outputQty = ft.outputQty * count;
-        return { type, count, ft, canProduce, missing, outputQty };
+        return { type, count, ft, halted, canProduce, missing, outputQty };
       });
     });
     const canDeliver = computed(() => {
@@ -905,41 +941,34 @@ createApp({
       }
     };
 
+    const allSeasonsProfit = () => ['SPRING','SUMMER','AUTUMN','WINTER'].every(s => seasonsWithProfit.has(s));
+    const achievementCtx = (overrides) => ({
+      netWorth: 0, gems: 0, distinctGoods: 0, orders: 0,
+      allSeasons: allSeasonsProfit(), plagueOk: false,
+      anyTrade: false, warSell: false, debtCleared: false, streak: consecutiveProfits,
+      ...overrides,
+    });
+
     const checkAchievementsOnTick = (data) => {
       if (warTicksRemaining > 0) warTicksRemaining--;
       const nw = session.gold + Object.entries(session.holdings)
         .reduce((s,[g,q]) => s + (prices[g]||0)*q, 0);
-      const gems = session.holdings['Gems'] || 0;
-      const distinctGoods = Object.keys(session.holdings).length;
       let plagueOk = false;
-      if (data.event && data.event.includes('Plague') && prevNetWorth != null) {
-        plagueOk = nw >= prevNetWorth;
-      }
+      if (data.event && data.event.includes('Plague') && prevNetWorth != null) plagueOk = nw >= prevNetWorth;
       prevNetWorth = nw;
       if (data.event && data.event.includes('War')) warTicksRemaining = 2;
-      checkAchievements({
-        netWorth: nw, gems, distinctGoods,
-        orders: session.limitOrders.length,
-        allSeasons: ['SPRING','SUMMER','AUTUMN','WINTER'].every(s => seasonsWithProfit.has(s)),
-        plagueOk,
-        anyTrade: false, warSell: false, debtCleared: false, streak: consecutiveProfits,
-      });
+      checkAchievements(achievementCtx({
+        netWorth: nw, gems: session.holdings['Gems'] || 0,
+        distinctGoods: Object.keys(session.holdings).length,
+        orders: session.limitOrders.length, plagueOk,
+      }));
     };
 
     const checkAchievementsOnSell = (realizedPnl, goodName) => {
-      if (realizedPnl > 0) {
-        consecutiveProfits++;
-        seasonsWithProfit.add(session.season);
-      } else {
-        consecutiveProfits = 0;
-      }
+      if (realizedPnl > 0) { consecutiveProfits++; seasonsWithProfit.add(session.season); }
+      else consecutiveProfits = 0;
       const warSell = warTicksRemaining > 0 && ['Iron','Coal','Timber','Rope'].includes(goodName);
-      checkAchievements({
-        netWorth: 0, gems: 0, distinctGoods: 0, orders: 0,
-        allSeasons: ['SPRING','SUMMER','AUTUMN','WINTER'].every(s => seasonsWithProfit.has(s)),
-        plagueOk: false, anyTrade: true, warSell,
-        debtCleared: false, streak: consecutiveProfits,
-      });
+      checkAchievements(achievementCtx({ anyTrade: true, warSell }));
     };
 
     // ── Price alert helpers ───────────────────────────────────────────────────
@@ -1019,6 +1048,9 @@ createApp({
         const d = await r.json();
         session.gold = d.gold;
         session.loanAmount = d.loanAmount;
+        if (d.loanAmount === 0) {
+          checkAchievements(achievementCtx({ debtCleared: true }));
+        }
       }
     };
 
@@ -1032,9 +1064,11 @@ createApp({
 
     // ── Expansion API methods ─────────────────────────────────────────────────
     const acceptGuild = async () => {
+      pendingGuildOffer.value = null;
       await fetch('/api/guild/accept', { method: 'POST', headers: { 'X-Session-Id': session.id } });
     };
     const declineGuild = async () => {
+      pendingGuildOffer.value = null;
       await fetch('/api/guild/decline', { method: 'POST', headers: { 'X-Session-Id': session.id } });
     };
     const fenceSell = async (goodName, qty) => {
@@ -1056,6 +1090,17 @@ createApp({
     };
     const toggleDemolishConfirm = (type) => {
       demolishConfirm.value = demolishConfirm.value === type ? null : type;
+    };
+
+    const toggleHalt = async (type) => {
+      const res = await fetch('/api/facility/toggle-halt', {
+        method: 'POST',
+        headers: { 'X-Session-Id': session.id, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      haltedFacilities.value = data.haltedFacilities || [];
     };
 
     const demolishFacility = async (type) => {
@@ -1101,12 +1146,20 @@ createApp({
         gold.value = data.gold;
       }
     };
-    const buyContraband = async (goodName, qty) => {
-      await fetch('/api/blackmarket/buy', {
+    const contrabandTrade = async (action, goodName, qty) => {
+      const res = await fetch(`/api/blackmarket/${action}`, {
         method: 'POST',
         headers: { 'X-Session-Id': session.id, 'Content-Type': 'application/json' },
         body: JSON.stringify({ goodName, quantity: qty })
       });
+      const data = await res.json();
+      if (data.error) {
+        alert(data.error === 'CONTRABAND_NOT_AGED' ? 'You must hold contraband for 5 ticks before selling.' : data.error);
+        return;
+      }
+      session.gold = data.gold;
+      contrabandHoldings.value = data.contrabandHoldings || {};
+      if (action === 'buy') blackMarketOffers.value = data.blackMarketOffers && data.blackMarketOffers.length > 0 ? data.blackMarketOffers : null;
     };
 
     // ── WebSocket tick handler ────────────────────────────────────────────────
@@ -1138,14 +1191,28 @@ createApp({
 
       // Ticker history
       if (payload.event) {
-        events.value.unshift(payload.event);
+        const EVENT_ICONS = {
+          iron_vein:    '⛏️',
+          harvest:      '🌾',
+          spice:        '🚢',
+          war:          '⚔️',
+          gems:         '💎',
+          wool:         '🐑',
+          banquet:      '👑',
+          embargo:      '🚫',
+          drought:      '☀️',
+          fire:         '🔥',
+          silver_vein:  '🪙',
+          guild_strike: '✊',
+          salt_shortage:'🧂',
+          alchemist:    '⚗️',
+          plague:       '💀',
+        };
+        const icon = EVENT_ICONS[payload.eventKey] || '⚡';
+        events.value.unshift(icon + ' ' + payload.event);
         if (events.value.length > 20) events.value.pop();
 
-        // Event banner: show for 4 seconds then fade
-        eventBanner.value = payload.event;
-        eventBannerFading.value = false;
-        setTimeout(() => { eventBannerFading.value = true; }, 3000);
-        setTimeout(() => { eventBanner.value = ''; eventBannerFading.value = false; }, 4000);
+        showEvent(icon + ' ' + payload.event);
 
         // Flash rows where price moved > 5% on this tick
         const newFlashed = new Set();
@@ -1194,7 +1261,10 @@ createApp({
           reconnecting.value = false;
           reconnectAttempts = 0;
           stompClient.subscribe('/topic/market', msg => {
-            if (!reconnecting.value) applyTick(JSON.parse(msg.body));
+            if (reconnecting.value) return;
+            const payload = JSON.parse(msg.body);
+            if (payload.tickError) { showEvent('⚠️ Market tick failed: ' + payload.tickError); return; }
+            applyTick(payload);
           });
           stompClient.subscribe('/user/queue/updates', msg => {
             const update = JSON.parse(msg.body);
@@ -1211,11 +1281,13 @@ createApp({
             exoticImportOffer.value = update.exoticImportOffer || null;
             fenceCooldown.value = update.fenceCooldown || 0;
             facilities.value = update.facilities || [];
+            haltedFacilities.value = update.haltedFacilities || [];
             activeContract.value = update.activeContract || null;
             pendingContractOffer.value = update.pendingContractOffer || null;
             rumours.value = update.rumours || [];
             blackMarketOffers.value = update.blackMarketOffers || null;
             contrabandHoldings.value = update.contrabandHoldings || {};
+            contrabandAge.value = update.contrabandAge || {};
             if (update.flashMessage) showEvent(update.flashMessage);
             if (update.holdings)   session.holdings  = update.holdings;
             if (update.costBasis)  session.costBasis = update.costBasis;
@@ -1308,12 +1380,6 @@ createApp({
         session.costBasis = data.costBasis || session.costBasis;
         if (data.loanAmount !== undefined) session.loanAmount = data.loanAmount;
         if (data.currentSeason) session.season = data.currentSeason;
-        // Show fee briefly under the gold display
-        const feeRate = session.playerClass === 'MERCHANT' ? 0.0 : 0.03;
-        const slippage = qty >= 10 ? Math.min(qty * 0.001, 0.05) : 0.0;
-        lastFee.amount = (prices[goodName] || 0) * qty * (feeRate + slippage);
-        clearTimeout(lastFee._timer);
-        lastFee._timer = setTimeout(() => { lastFee.amount = 0; }, 3000);
         localStorage.setItem('portfolio', JSON.stringify({
           gold: data.gold,
           holdings: data.holdings
@@ -1347,7 +1413,7 @@ createApp({
 
     // ── Expose to template ────────────────────────────────────────────────────
     return {
-      session, prices, goods, events, scoreboard, reconnecting, lastFee,
+      session, prices, goods, events, scoreboard, reconnecting, tradeFeeRate,
       eventBanner, eventBannerFading, flashedGoods,
       netWorth, fmt,
       priceClass, priceArrow,
@@ -1356,7 +1422,7 @@ createApp({
       canBuy, buyMax, canSell,
       startSession, trade, registerCanvas,
       netWorthHistory, updateNetWorthChart,
-      seasonIcon, seasonProgress,
+      seasonIcon, seasonProgress, seasonTooltip,
       priceAlerts, alertPopover, alertAbove, alertBelow, alertMessage,
       achievementToast, achievements,
       allGoods, allAchievements: ACHIEVEMENTS,
@@ -1366,14 +1432,14 @@ createApp({
       checkAchievementsOnSell, checkAchievementsOnTick,
       // Expansion
       guild, pendingGuildOffer, exoticImportOffer, fenceCooldown,
-      facilities, facilityTypes, ownedFacilityCards, demolishConfirm,
+      facilities, haltedFacilities, facilityTypes, ownedFacilityCards, demolishConfirm,
       activeContract, pendingContractOffer, canDeliver,
-      rumours, blackMarketOffers, contrabandHoldings,
+      rumours, blackMarketOffers, contrabandHoldings, contrabandAge,
       getHolding,
       acceptGuild, declineGuild, fenceSell, buyExoticImport,
-      buildFacility, toggleDemolishConfirm, demolishFacility,
+      buildFacility, toggleHalt, toggleDemolishConfirm, demolishFacility,
       acceptContract, declineContract, deliverContract,
-      tipRumour, buyContraband,
+      tipRumour, contrabandTrade,
     };
   }
 }).mount('#app');
