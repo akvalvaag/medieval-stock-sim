@@ -2,6 +2,10 @@
 
 A browser-based multiplayer trading simulation set in a medieval economy. Players buy and sell goods across a live market that shifts every few seconds, driven by seasonal cycles, random events, rumours, and the collective pressure of all active traders.
 
+![Lobby — class selection](docs/images/lobby.png)
+
+![Main trading UI](docs/images/trading-ui.png)
+
 ## Gameplay
 
 Each player picks a class and a name, then trades 29 goods across three categories — Agriculture, Mining, and Timber & Craft — against a shared, real-time market. Prices fluctuate every tick based on supply pressure, volatility, active events, and the current season. The goal is to finish with the highest net worth.
@@ -33,13 +37,28 @@ Each player picks a class and a name, then trades 29 goods across three categori
 - **Frontend** — Vue 3 (CDN, no build step), SockJS + STOMP WebSocket
 - **Persistence** — none; all state is in-memory per session
 
+## Quick start
+
+1. **Start the server**
+   ```bash
+   mvn spring-boot:run
+   ```
+2. **Open** `http://localhost:8080` in your browser
+3. **Create a session** — one player clicks *New Session*; the session code is displayed at the top
+4. **Other players join** — enter the session code and click *Join*
+5. **Pick your class and name** — Merchant for no fees, Noble for a bigger bankroll, Miner for a specialised edge
+6. **Start trading** — the market ticks every few seconds; watch the price charts, react to events and rumours, and build facilities when you have capital to spare
+7. **Win** — the player with the highest net worth when the session ends tops the scoreboard
+
+Multiple browser tabs on the same machine can join the same session simultaneously.
+
 ## Running locally
 
 ```bash
 mvn spring-boot:run
 ```
 
-Then open `http://localhost:8080` in your browser. Multiple browser tabs can join the same session server simultaneously.
+Then open `http://localhost:8080` in your browser.
 
 ## Running tests
 
