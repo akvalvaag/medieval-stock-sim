@@ -1,2 +1,4 @@
 target/
 .worktrees/
+.superpowers/
+.claude/settings.local.json
